@@ -7,7 +7,14 @@
     "start": "node src/index.js",
     "dev": "node --watch src/index.js"
   },
-  "keywords": ["whatsapp", "chatbot", "balmoral", "restaurant", "ultramsg", "gemini"],
+  "keywords": [
+    "whatsapp",
+    "chatbot",
+    "balmoral",
+    "restaurant",
+    "ultramsg",
+    "gemini"
+  ],
   "author": "",
   "license": "ISC",
   "dependencies": {
@@ -15,6 +22,8 @@
     "body-parser": "^1.20.3",
     "dotenv": "^16.4.7",
     "express": "^4.21.2",
+    "express-basic-auth": "^1.2.1",
+    "firebase-admin": "^13.10.0",
     "ultramsg-whatsapp-api": "^1.0.2"
   }
 }

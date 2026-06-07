@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Panel - Balmoral AI</title>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+  <script type="module" src="https://unpkg.com/ionicons@7.1.0/dist/ionicons/ionicons.esm.js"></script>
+  <script nomodule src="https://unpkg.com/ionicons@7.1.0/dist/ionicons/ionicons.js"></script>
+</head>
+<body>
+  <div class="app-container">
+    <aside class="sidebar glass">
+      <div class="brand">
+        <ion-icon name="restaurant-outline"></ion-icon>
+        <h1>Balmoral AI</h1>
+      </div>
+      <nav class="nav-menu" id="nav-menu">
+        <!-- Generado dinámicamente -->
+        <div class="loading-menu">Cargando módulos...</div>
+      </nav>
+      <div class="user-info">
+        <ion-icon name="person-circle-outline"></ion-icon>
+        <span>Admin</span>
+      </div>
+    </aside>
+
+    <main class="main-content">
+      <header class="topbar glass">
+        <div>
+          <h2 id="current-title">Panel de Administración</h2>
+          <p class="subtitle">Gestiona el conocimiento del agente de Inteligencia Artificial.</p>
+        </div>
+        <button class="btn btn-primary" id="btn-save" disabled>
+          <ion-icon name="save-outline"></ion-icon> Guardar Cambios
+        </button>
+      </header>
+
+      <div class="editor-container glass">
+        <div id="welcome-message" class="welcome-state">
+          <ion-icon name="hardware-chip-outline" class="big-icon"></ion-icon>
+          <h3>Bienvenido al Cerebro de Balmoral</h3>
+          <p>Selecciona un módulo en el panel izquierdo para editar el conocimiento del agente. Todos los cambios se reflejarán instantáneamente en WhatsApp.</p>
+        </div>
+        
+        <div id="editor-state" class="editor-state hidden">
+          <div class="editor-header">
+            <span class="badge">Formato JSON</span>
+            <span id="status-msg" class="status-msg"></span>
+          </div>
+          <textarea id="json-editor" spellcheck="false"></textarea>
+        </div>
+      </div>
+    </main>
+  </div>
+  
+  <div class="toast" id="toast">✅ Guardado correctamente</div>
+
+  <script src="app.js"></script>
+</body>
+</html>
