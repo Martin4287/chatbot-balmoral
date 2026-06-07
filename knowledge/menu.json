@@ -1,59 +1,161 @@
 {
-  "_instrucciones": "COMPLETAR CON LA CARTA REAL DEL RESTAURANTE. Podés pasarle fotos de la carta al asistente para que las transcriba aquí.",
-  "ultima_actualizacion": "2026-06-07",
-  "nota": "Carta sujeta a disponibilidad y temporada. Precios en pesos argentinos.",
-  "categorias": [
-    {
-      "nombre": "Entradas",
-      "platos": [
-        {
-          "nombre": "Ejemplo: Tabla de fiambres y quesos artesanales",
-          "descripcion": "Selección de fiambres y quesos de la región, acompañados de pan artesanal",
-          "precio": "Consultar",
-          "apto_celiaco": false,
-          "vegetariano": false,
-          "vegano": false,
-          "destacado": false
-        }
+  "menu_ejecutivo": {
+    "disponibilidad": "De Lunes a Viernes Mediodía",
+    "opciones_principal": [
+      "Milanesa de pollo con guarnición",
+      "Arroz con vegetales",
+      "Ensalada cinco ingredientes",
+      "Merluza con guarnición",
+      "Sorrentinos con salsa filetto"
+    ],
+    "opciones_postre": [
+      "Budín de pan con dulce de leche",
+      "Ensalada de Fruta",
+      "Mousse de Chocolate",
+      "Helados",
+      "Café"
+    ],
+    "precios": {
+      "Principal + Postre + Bebida": "26000",
+      "Principal + Bebida": "23500"
+    },
+    "notas": "Incluye bebida sin alcohol o copa de vino. No acumulable con otras promociones."
+  },
+  "entradas": [
+    { "nombre": "Tabla de Quesos y Fiambres", "precio": "18500" },
+    { "nombre": "Rabas", "precio": "22500" },
+    { "nombre": "Gambas al Ajillo", "precio": "22500" },
+    { "nombre": "Langostinos Panados", "precio": "25000" },
+    { "nombre": "Matambre Casero con Ensalada Rusa", "precio": "18500" },
+    { "nombre": "Tortilla de Papas", "precio": "14000" },
+    { "nombre": "Empanadas de carne cortada a cuchillo (2 unidades)", "precio": "7500" },
+    { "nombre": "Sopa cremosa de calabaza", "precio": "10000" }
+  ],
+  "ensaladas": [
+    { "nombre": "Caesar", "descripcion": "Mix de hojas verdes, pollo, croutons, panceta, parmesano y aderezo", "precio": "18500" },
+    { "nombre": "Ensalada Balmoral", "descripcion": "Mix de hojas verdes, palta, huevo, parmesano y pollo", "precio": "19500" },
+    { "nombre": "Tres ingredientes a elección", "descripcion": "Mix de hojas verdes, Zanahoria, Choclo, Huevo, Arroz, Tomate, Cebolla, Palta, Queso", "precio": "18500" },
+    { "nombre": "Cinco ingredientes a elección", "descripcion": "Mix de hojas verdes, Zanahoria, Choclo, Huevo, Arroz, Tomate, Cebolla, Palta, Queso", "precio": "21500" }
+  ],
+  "pastas_caseras": [
+    { "nombre": "Sorrentinos de Jamón y Queso con Salsa Filetto", "precio": "22500" },
+    { "nombre": "Ravioles de Verdura con Crema", "precio": "22500" },
+    { "nombre": "Tagliatelle con Boloñesa", "precio": "22500" },
+    { "nombre": "Lasagna Napolitana con Salsa Mixta", "precio": "23500" },
+    { "nombre": "Ñoquis de Papa con Salsa Rosa", "precio": "21000" },
+    { "nombre": "Canelones de Verdura con Salsa Filetto", "precio": "23000" },
+    { "nombre": "Ravioles de Osobuco con crema de vegetales", "precio": "22500" }
+  ],
+  "platos_principales": [
+    { "nombre": "Ojo de Bife con Papas fritas", "precio": "29500" },
+    { "nombre": "Bondiola de Cerdo al Verdeo con Papas Españolas", "precio": "25000" },
+    { "nombre": "Pollo al Ajillo con Papas fritas", "precio": "24500" },
+    { "nombre": "Milanesa de Peceto Napolitana con Puré de Papas", "precio": "24500" },
+    { "nombre": "Suprema de Pollo Napolitana con Puré de Papas", "precio": "23500" },
+    { "nombre": "Pesca del día con Batata Asada", "precio": "28500" },
+    { "nombre": "Arroz con Vegetales Salteados", "precio": "24000" }
+  ],
+  "nuestras_sugerencias": [
+    { "nombre": "Milanesa con Fideos a la Crema", "descripcion": "Clásica milanesa de peceto con fideos a la crema", "precio": "26000" },
+    { "nombre": "Pollo a la Crema", "descripcion": "Con panceta, olivas y papas noisette", "precio": "27500" },
+    { "nombre": "Tournedó de Lomo", "descripcion": "Lomo a la pimienta envuelto en panceta acompañado de papas a la crema gratinadas", "precio": "32000" },
+    { "nombre": "Pesca del día Dos Reyes", "descripcion": "Pesca del día con salsa de limón y reducción de Chardonnay acompañado de puré duquesa con acelga salteada", "precio": "29500" },
+    { "nombre": "Goulash de Ternera", "descripcion": "Goulash de ternera con spaetzle", "precio": "26500" },
+    { "nombre": "Osobuco con Puré de Boniato", "descripcion": "Osobuco braseado con puré cremoso de boniato", "precio": "31000" }
+  ],
+  "menu_infantil": {
+    "nombre": "MENÚ PRÍNCIPE",
+    "descripcion": "Menú infantil - Hasta 12 años. Incluye bebida + helado",
+    "opciones": [
+      { "nombre": "Milanesita con Puré o Papas fritas", "precio": "19000" },
+      { "nombre": "Tagliatelle con Filetto y/o Crema", "precio": "19000" },
+      { "nombre": "Nuggets con Puré o Papas fritas", "precio": "19000" }
+    ]
+  },
+  "menu_sin_gluten": {
+    "descripcion": "Productos Karel Gluten Free",
+    "platos": [
+      { "nombre": "Quiche de Puerro y Pollo", "precio": "18500" },
+      { "nombre": "Sandwich de Jamón y Queso", "precio": "15500" },
+      { "nombre": "Canelones de Verdura con Filetto", "precio": "25000" }
+    ],
+    "pasteleria": [
+      { "nombre": "Tarta de Coco y Dulce de Leche", "precio": "5500" },
+      { "nombre": "Cookie de Chocolate", "precio": "5500" },
+      { "nombre": "Alfajor de Almendras", "precio": "5500" },
+      { "nombre": "Alfajor de Maicena", "precio": "5500" },
+      { "nombre": "Brownie", "precio": "5500" }
+    ]
+  },
+  "sandwiches": [
+    { "nombre": "Ciabatta Jamón Cocido y Queso", "precio": "13000" },
+    { "nombre": "Ciabatta Jamón Crudo y Queso", "precio": "16000" },
+    { "nombre": "Tostado de Jamón y Queso", "precio": "11500" },
+    { "nombre": "Hamburguesa Casera completa", "precio": "21500" }
+  ],
+  "bebidas_y_vinos": {
+    "bebidas_sin_alcohol": [
+      { "nombre": "AQA Ultra Mineralizada 500 cc", "precio": "3000" },
+      { "nombre": "Agua Mineral Villavicencio", "precio": "4000" },
+      { "nombre": "Gaseosas", "precio": "4000" },
+      { "nombre": "Aguas Saborizadas Levite", "precio": "4500" },
+      { "nombre": "Exprimido de Naranja", "precio": "5000" }
+    ],
+    "cervezas": [
+      { "nombre": "Cerveza Heineken porrón 330cc", "precio": "6800" },
+      { "nombre": "Cerveza Miller porrón 330cc", "precio": "6800" },
+      { "nombre": "Cerveza Heineken sin alcohol", "precio": "6800" }
+    ],
+    "vinos_copa": [
+      { "nombre": "Copa de Vino", "precio": "4800" }
+    ],
+    "bodega_escorihuela_gascon": {
+      "tintos": [
+        { "nombre": "MEG Blend", "descripcion": "Malbec de Valle de Uco, Cabernet S. de Tupungato", "precio": "60300" },
+        { "nombre": "The President's Blend", "descripcion": "Malbec y Syrah de Valle de Uco, Cabernet S. de Tupungato", "precio": "51000" },
+        { "nombre": "Pequeñas Producciones Malbec", "descripcion": "Valle de Uco, Mendoza, Argentina", "precio": "48000" },
+        { "nombre": "Pequeñas Producciones Cabernet Franc", "descripcion": "Tupungato, Mendoza, Argentina", "precio": "48000" },
+        { "nombre": "Escorihuela Gran Reserva Malbec", "descripcion": "Agrelo, Mendoza, Argentina", "precio": "29000" },
+        { "nombre": "Escorihuela Gascón Malbec", "descripcion": "Luján de Cuyo, Mendoza, Argentina", "precio": "20500" },
+        { "nombre": "Escorihuela Gascón Cabernet Franc", "descripcion": "Agrelo, Mendoza, Argentina", "precio": "20500" }
+      ],
+      "blancos_y_rosados": [
+        { "nombre": "Escorihuela Gran Reserva Chardonnay", "descripcion": "Agrelo, Mendoza, Argentina", "precio": "29000" },
+        { "nombre": "Escorihuela Gascón Chardonnay", "descripcion": "Agrelo, Mendoza, Argentina", "precio": "20500" },
+        { "nombre": "Escorihuela Gascón Sauvignon blanc", "descripcion": "Agrelo, Mendoza, Argentina", "precio": "20500" },
+        { "nombre": "Familia Gascón Dulce Cosecha", "descripcion": "Agrelo, Mendoza, Argentina", "precio": "18000" },
+        { "nombre": "Familia Gascón Rosé", "descripcion": "Agrelo, Mendoza, Argentina", "precio": "18000" }
       ]
-    },
-    {
-      "nombre": "Platos Principales - Carnes",
-      "platos": [
-        {
-          "nombre": "Ejemplo: Lomo Balmoral",
-          "descripcion": "Lomo de ternera con salsa especial del chef",
-          "precio": "Consultar",
-          "apto_celiaco": false,
-          "vegetariano": false,
-          "vegano": false,
-          "destacado": true
-        }
-      ]
-    },
-    {
-      "nombre": "Platos Principales - Pescados y Mariscos",
-      "platos": []
-    },
-    {
-      "nombre": "Platos Principales - Pastas",
-      "platos": []
-    },
-    {
-      "nombre": "Ensaladas",
-      "platos": []
-    },
-    {
-      "nombre": "Postres",
-      "platos": []
-    },
-    {
-      "nombre": "Carta de Vinos",
-      "items": []
-    },
-    {
-      "nombre": "Bebidas",
-      "items": []
     }
-  ]
+  },
+  "postres": [
+    { "nombre": "Flan con dulce de leche y crema", "precio": "7500" },
+    { "nombre": "Budin de pan", "precio": "7500" },
+    { "nombre": "Peras al vino Borgoña", "precio": "7500" },
+    { "nombre": "Queso y Dulce", "precio": "7500" },
+    { "nombre": "Panqueques con dulce de leche", "precio": "7500" },
+    { "nombre": "Variedad de Helados", "precio": "6500" },
+    { "nombre": "Ensalada de Fruta", "precio": "6500" },
+    { "nombre": "Bombón Suizo", "precio": "6500" },
+    { "nombre": "Almendrado", "precio": "6500" },
+    { "nombre": "Mousse de chocolate", "precio": "7500" },
+    { "nombre": "Creme Brulee", "precio": "7500" },
+    { "nombre": "Affogato", "descripcion": "Helado, café espresso y chocolate", "precio": "7500" }
+  ],
+  "cafeteria": [
+    { "nombre": "Espresso", "precio": "4200" },
+    { "nombre": "Café con leche", "precio": "5500" },
+    { "nombre": "Capuccino", "precio": "6000" },
+    { "nombre": "Submarino", "precio": "6000" },
+    { "nombre": "Té Twinnings", "precio": "5000" }
+  ],
+  "desayunos_y_meriendas": [
+    { "nombre": "Continental", "descripcion": "Café con Leche, Tostadas, Manteca, Mermelada, Jugo y medialunas (2 unidades)", "precio": "15500" },
+    { "nombre": "Americano", "descripcion": "Café con Leche, Tostadas, Frutas, Jugo, Huevos Revueltos, Jamón y Queso", "precio": "17500" },
+    { "nombre": "Avocado Toast", "descripcion": "Café con Leche, Tostada con Palta y Huevo", "precio": "12500" },
+    { "nombre": "Merienda Karel (Sin Gluten)", "descripcion": "Café con leche + Porción dulce", "precio": "10000" },
+    { "nombre": "Café con Leche + 2 medialunas", "precio": "7000" },
+    { "nombre": "Licuado + Tostado de jamón y Queso", "precio": "15500" }
+  ],
+  "notas_generales": "Los platos para compartir tienen un valor adicional del 20%. Los precios incluyen impuestos (IVA 21%)."
 }
