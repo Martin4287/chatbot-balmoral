@@ -122,7 +122,7 @@ function generateFallbackResponse(userMessage, context) {
       '- Pastas caseras desde $21.000\n' +
       '- Menú Príncipe (Infantil) $19.000\n' +
       '- Opciones Sin Gluten (Karel)\n\n' +
-      'Para ver la carta completa con todos los precios o preguntar por un plato en particular, podés contactarnos al (0223) 491-0383 o aguardar a que nuestra IA complete su actualización. ✨';
+      'Para ver la carta completa con todos los precios, podés ver nuestro PDF aquí: https://drive.google.com/uc?export=download&id=1TmmIuRXzHFhAoG0zbxL4rZxhCY0uNQd8 ✨';
   }
 
   // Si hay contexto de FAQ, usarlo
