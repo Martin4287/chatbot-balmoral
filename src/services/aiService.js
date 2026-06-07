@@ -104,7 +104,28 @@ function generateFallbackResponse(userMessage, context) {
       '🎵 Eventos y música en vivo';
   }
 
-  // Si hay contexto de FAQ, usarlo directamente
+  // Si preguntan por horarios
+  if (msg.includes('hora') || msg.includes('abren') || msg.includes('cierran') || msg.includes('horario')) {
+    return '🕒 *Nuestros horarios de atención son:*\n' +
+      'Todos los días:\n' +
+      '- Almuerzo: 12:30 a 18:00 hs\n' +
+      '- Cena: 20:30 a 00:00 hs\n\n' +
+      '¡Lo esperamos! 🍽️';
+  }
+
+  // Si preguntan por el menú o la carta
+  if (msg.includes('menu') || msg.includes('menú') || msg.includes('carta') || msg.includes('plato') || msg.includes('precio')) {
+    return '📋 *Nuestra Carta*\n\n' +
+      'Contamos con una amplia variedad de opciones:\n' +
+      '- Menú Ejecutivo (Lun a Vie mediodía): $26.000\n' +
+      '- Platos principales (Ojo de Bife, Bondiola, Pesca del día, etc) desde $24.000\n' +
+      '- Pastas caseras desde $21.000\n' +
+      '- Menú Príncipe (Infantil) $19.000\n' +
+      '- Opciones Sin Gluten (Karel)\n\n' +
+      'Para ver la carta completa con todos los precios o preguntar por un plato en particular, podés contactarnos al (0223) 491-0383 o aguardar a que nuestra IA complete su actualización. ✨';
+  }
+
+  // Si hay contexto de FAQ, usarlo
   if (context && context.includes('PREGUNTAS FRECUENTES RELEVANTES')) {
     const faqMatch = context.match(/R: (.+?)(?:\n|$)/);
     if (faqMatch) {
