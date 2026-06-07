@@ -1,0 +1,77 @@
+[
+  {
+    "pregunta": "¿Cuál es el horario del restaurante?",
+    "respuesta": "Nuestro restaurante atiende de lunes a domingo. El servicio de almuerzo es de 12:00 a 15:00 hs, y la cena de 20:00 a 23:30 hs. Los horarios pueden variar según temporada, le recomendamos confirmar llamando al (0223) 491-0383.",
+    "tags": ["horario", "horarios", "hora", "abren", "cierran", "abierto", "cerrado", "atencion", "atención"]
+  },
+  {
+    "pregunta": "¿Se puede reservar mesa?",
+    "respuesta": "¡Por supuesto! Puede reservar llamando al (0223) 491-0383, por WhatsApp al 2235-44-6970, o escribiéndonos a balmoralrestaurante@gmail.com. Recomendamos reservar con al menos 24 horas de anticipación, especialmente para fines de semana.",
+    "tags": ["reserva", "reservar", "mesa", "lugar", "turno", "booking"]
+  },
+  {
+    "pregunta": "¿Dónde queda el restaurante?",
+    "respuesta": "Nos encontramos en Av. Colón 2129, Mar del Plata, dentro del Hotel Dos Reyes. Estamos en planta baja del hotel, con fácil acceso y estacionamiento propio.",
+    "tags": ["donde", "dónde", "dirección", "direccion", "ubicación", "ubicacion", "llegar", "queda", "mapa", "como llego"]
+  },
+  {
+    "pregunta": "¿El restaurante es solo para huéspedes del hotel?",
+    "respuesta": "¡Para nada! El Restaurante Balmoral está abierto tanto para huéspedes del Hotel Dos Reyes como para público en general. Todos son bienvenidos a disfrutar de nuestra propuesta gastronómica.",
+    "tags": ["huésped", "huesped", "hotel", "alojado", "público", "publico", "externo", "solo"]
+  },
+  {
+    "pregunta": "¿Tienen menú para celíacos?",
+    "respuesta": "Contamos con opciones aptas para celíacos. Nuestro chef puede adaptar varios platos de la carta. Le recomendamos informarnos al momento de la reserva para que preparemos todo especialmente para usted.",
+    "tags": ["celiaco", "celíaco", "celiacos", "gluten", "sin tacc", "tacc", "alergia", "alergias", "intolerancias"]
+  },
+  {
+    "pregunta": "¿Tienen opciones vegetarianas o veganas?",
+    "respuesta": "Sí, contamos con opciones vegetarianas en nuestra carta. Para opciones veganas, le sugerimos consultarnos al momento de la reserva y nuestro chef preparará alternativas especiales para usted.",
+    "tags": ["vegetariano", "vegetariana", "vegano", "vegana", "verduras", "sin carne", "plant based"]
+  },
+  {
+    "pregunta": "¿Tienen menú infantil?",
+    "respuesta": "Sí, contamos con un menú especial para los más pequeños. Ofrecemos opciones pensadas especialmente para niños, con platos que les encantan.",
+    "tags": ["niños", "niño", "infantil", "chicos", "nenes", "hijos", "familia", "kids"]
+  },
+  {
+    "pregunta": "¿Hay música en vivo?",
+    "respuesta": "¡Sí! Los viernes, sábados y domingos disfrutamos de un pianista en vivo durante el servicio de cena, a partir de las 21:00 hs. Es una experiencia que realza la velada de manera especial.",
+    "tags": ["música", "musica", "piano", "pianista", "vivo", "show", "espectáculo", "entretenimiento"]
+  },
+  {
+    "pregunta": "¿Aceptan tarjeta de crédito?",
+    "respuesta": "Aceptamos todas las formas de pago: efectivo, tarjetas de crédito (Visa, Mastercard, American Express), tarjetas de débito, Mercado Pago y transferencia bancaria.",
+    "tags": ["tarjeta", "pago", "pagar", "efectivo", "débito", "debito", "crédito", "credito", "mercado pago", "transferencia", "visa", "mastercard"]
+  },
+  {
+    "pregunta": "¿Tienen estacionamiento?",
+    "respuesta": "Sí, el Hotel Dos Reyes cuenta con estacionamiento propio para comodidad de nuestros comensales.",
+    "tags": ["estacionamiento", "estacionar", "parking", "auto", "cochera", "garage"]
+  },
+  {
+    "pregunta": "¿Hacen eventos privados?",
+    "respuesta": "¡Absolutamente! Organizamos eventos privados, corporativos, celebraciones de cumpleaños, aniversarios y cenas románticas. Contáctenos al (0223) 491-0383 para que armemos juntos una propuesta a medida.",
+    "tags": ["evento", "eventos", "privado", "corporativo", "empresa", "cumpleaños", "aniversario", "fiesta", "celebración", "salon"]
+  },
+  {
+    "pregunta": "¿Cuánto sale el cubierto?",
+    "respuesta": "Para consultar sobre precios actualizados de nuestro servicio de cubierto, le sugiero contactarnos directamente al (0223) 491-0383 o por este WhatsApp, ya que pueden variar según temporada.",
+    "tags": ["cubierto", "precio", "costo", "cuanto", "cuánto", "sale", "vale", "caro"]
+  },
+  {
+    "pregunta": "¿Hay código de vestimenta?",
+    "respuesta": "Le sugerimos vestimenta smart casual: cómoda pero elegante, acorde a un restaurante de hotel. No es necesario traje ni corbata, pero sí recomendamos evitar ropa deportiva o de playa.",
+    "tags": ["vestimenta", "ropa", "dress code", "vestir", "informal", "formal", "etiqueta"]
+  },
+  {
+    "pregunta": "¿Tienen WiFi?",
+    "respuesta": "Sí, contamos con WiFi gratuito para todos nuestros clientes.",
+    "tags": ["wifi", "internet", "wi-fi", "conexión", "conexion"]
+  },
+  {
+    "pregunta": "¿Puedo ver la carta / menú?",
+    "respuesta": "¡Con todo gusto! Le puedo enviar nuestra carta completa en PDF. ¿Desea que se la envíe?",
+    "tags": ["carta", "menú", "menu", "ver", "platos", "que tienen", "qué tienen", "comer", "cenar", "almorzar"]
+  }
+]

@@ -1,0 +1,21 @@
+{
+  "_instrucciones": "Agregar eventos actuales, promociones vigentes y menús especiales. Actualizar regularmente.",
+  "eventos_actuales": [
+    {
+      "nombre": "Cena con Piano en Vivo",
+      "descripcion": "Disfrute de una velada especial con música de piano en vivo acompañando su cena",
+      "dias": "Viernes, Sábados y Domingos",
+      "horario": "A partir de las 21:00 hs",
+      "vigente": true
+    }
+  ],
+  "promociones": [],
+  "menu_temporada": {
+    "temporada_actual": "Invierno 2026",
+    "descripcion": "Platos especiales de temporada con ingredientes de estación",
+    "platos_destacados": []
+  },
+  "fechas_especiales": {
+    "proximas": []
+  }
+}

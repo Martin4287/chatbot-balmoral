@@ -1,0 +1,23 @@
+{
+  "_instrucciones": "Completar con los horarios reales del restaurante",
+  "horarios_regulares": {
+    "lunes": { "almuerzo": "12:00 - 15:00", "cena": "20:00 - 23:30" },
+    "martes": { "almuerzo": "12:00 - 15:00", "cena": "20:00 - 23:30" },
+    "miercoles": { "almuerzo": "12:00 - 15:00", "cena": "20:00 - 23:30" },
+    "jueves": { "almuerzo": "12:00 - 15:00", "cena": "20:00 - 23:30" },
+    "viernes": { "almuerzo": "12:00 - 15:00", "cena": "20:00 - 00:00" },
+    "sabado": { "almuerzo": "12:00 - 15:30", "cena": "20:00 - 00:00" },
+    "domingo": { "almuerzo": "12:00 - 15:30", "cena": "20:00 - 23:30" }
+  },
+  "temporada_alta": {
+    "periodo": "Diciembre a Marzo",
+    "nota": "En temporada alta los horarios pueden extenderse. Consultar."
+  },
+  "temporada_baja": {
+    "periodo": "Abril a Noviembre",
+    "nota": "Horarios regulares. Posibles modificaciones en días de baja demanda."
+  },
+  "feriados": {
+    "nota": "En feriados nacionales el restaurante generalmente permanece abierto. Recomendamos confirmar con anticipación."
+  }
+}

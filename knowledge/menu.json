@@ -1,0 +1,59 @@
+{
+  "_instrucciones": "COMPLETAR CON LA CARTA REAL DEL RESTAURANTE. Podés pasarle fotos de la carta al asistente para que las transcriba aquí.",
+  "ultima_actualizacion": "2026-06-07",
+  "nota": "Carta sujeta a disponibilidad y temporada. Precios en pesos argentinos.",
+  "categorias": [
+    {
+      "nombre": "Entradas",
+      "platos": [
+        {
+          "nombre": "Ejemplo: Tabla de fiambres y quesos artesanales",
+          "descripcion": "Selección de fiambres y quesos de la región, acompañados de pan artesanal",
+          "precio": "Consultar",
+          "apto_celiaco": false,
+          "vegetariano": false,
+          "vegano": false,
+          "destacado": false
+        }
+      ]
+    },
+    {
+      "nombre": "Platos Principales - Carnes",
+      "platos": [
+        {
+          "nombre": "Ejemplo: Lomo Balmoral",
+          "descripcion": "Lomo de ternera con salsa especial del chef",
+          "precio": "Consultar",
+          "apto_celiaco": false,
+          "vegetariano": false,
+          "vegano": false,
+          "destacado": true
+        }
+      ]
+    },
+    {
+      "nombre": "Platos Principales - Pescados y Mariscos",
+      "platos": []
+    },
+    {
+      "nombre": "Platos Principales - Pastas",
+      "platos": []
+    },
+    {
+      "nombre": "Ensaladas",
+      "platos": []
+    },
+    {
+      "nombre": "Postres",
+      "platos": []
+    },
+    {
+      "nombre": "Carta de Vinos",
+      "items": []
+    },
+    {
+      "nombre": "Bebidas",
+      "items": []
+    }
+  ]
+}

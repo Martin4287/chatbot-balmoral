@@ -1,0 +1,43 @@
+{
+  "nombre": "Restaurante Balmoral",
+  "hotel": "Hotel Dos Reyes",
+  "categoria": "4 estrellas",
+  "direccion": "Av. Colón 2129, Mar del Plata, Buenos Aires, Argentina",
+  "telefonos": ["(0223) 491-0383", "(0223) 491-2916"],
+  "whatsapp": "2235-44-6970",
+  "email": "balmoralrestaurante@gmail.com",
+  "web": "https://dosreyes.com.ar",
+  "tipo_cocina": "Cocina internacional con productos de temporada elaborados al momento",
+  "descripcion": "El Restaurante Balmoral es el restaurante principal del Hotel Dos Reyes, uno de los hoteles más tradicionales y prestigiosos de Mar del Plata. Ofrece una experiencia gastronómica refinada en un ambiente elegante y acogedor, ideal tanto para huéspedes del hotel como para comensales externos.",
+  "musica_en_vivo": {
+    "descripcion": "Pianista en vivo durante la cena",
+    "dias": ["Viernes", "Sábado", "Domingo"],
+    "horario": "A partir de las 21:00 hs"
+  },
+  "abierto_al_publico": true,
+  "nota_publico": "El restaurante está abierto tanto para huéspedes del hotel como para público en general. No es necesario estar alojado para disfrutar de nuestro servicio.",
+  "formas_pago": [
+    "Efectivo",
+    "Tarjetas de crédito (Visa, Mastercard, American Express)",
+    "Tarjetas de débito",
+    "Mercado Pago",
+    "Transferencia bancaria"
+  ],
+  "dress_code": "Smart casual. Le sugerimos vestimenta cómoda pero elegante, acorde a un restaurante de hotel.",
+  "estacionamiento": "El hotel cuenta con estacionamiento propio para comodidad de nuestros comensales.",
+  "wifi": "Sí, Wi-Fi gratuito disponible para nuestros clientes.",
+  "accesibilidad": "Contamos con acceso para personas con movilidad reducida.",
+  "reservas": {
+    "como_reservar": "Puede reservar llamando al (0223) 491-0383, por WhatsApp al 2235-44-6970, o por email a balmoralrestaurante@gmail.com",
+    "anticipacion": "Recomendamos reservar con al menos 24 horas de anticipación, especialmente para fines de semana.",
+    "grupos": "Para grupos de más de 8 personas, le pedimos reservar con 48 horas de anticipación."
+  },
+  "servicios_especiales": [
+    "Eventos privados y corporativos",
+    "Cenas románticas",
+    "Celebraciones de cumpleaños y aniversarios",
+    "Menú especial para niños",
+    "Opciones para celíacos (consultar disponibilidad)",
+    "Opciones vegetarianas disponibles"
+  ]
+}

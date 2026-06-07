@@ -1,0 +1,34 @@
+{
+  "_instrucciones": "Agregar URLs públicas de fotos y documentos del restaurante. Las fotos deben estar alojadas en URLs accesibles (Google Drive público, Imgur, CDN de UltraMSG, etc.)",
+  "carta_pdf": {
+    "url": "https://drive.google.com/uc?export=download&id=1TmmIuRXzHFhAoG0zbxL4rZxhCY0uNQd8",
+    "filename": "Carta_Balmoral_2026.pdf",
+    "caption": "📋 Carta del Restaurante Balmoral — Hotel Dos Reyes",
+    "keywords": ["carta", "menú", "menu", "platos", "ver carta", "que tienen", "qué tienen", "precios", "comer", "cenar", "almorzar", "ver el menu", "mandame la carta", "enviame la carta", "pdf"]
+  },
+  "fotos": {
+    "salon_principal": {
+      "url": "",
+      "caption": "✨ Nuestro elegante salón principal del Restaurante Balmoral",
+      "keywords": ["salon", "salón", "interior", "foto", "fotos", "como es", "cómo es", "ambiente"]
+    },
+    "plato_destacado": {
+      "url": "",
+      "caption": "🍽️ Uno de nuestros platos destacados, elaborado con productos de temporada",
+      "keywords": ["plato", "comida", "foto plato", "muestra"]
+    },
+    "fachada_hotel": {
+      "url": "",
+      "caption": "🏨 Fachada del Hotel Dos Reyes, Mar del Plata",
+      "keywords": ["hotel", "fachada", "edificio", "frente", "exterior"]
+    }
+  },
+  "documentos": {
+    "menu_eventos": {
+      "url": "",
+      "filename": "Menu_Eventos_Balmoral.pdf",
+      "caption": "🎉 Menú especial para eventos privados",
+      "keywords": ["evento", "eventos", "privado", "corporativo", "menu eventos"]
+    }
+  }
+}
