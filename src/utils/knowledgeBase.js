@@ -1,14 +1,14 @@
 const fs = require('fs');
 const path = require('path');
-const { getAllDocuments, db } = require('./firebase');
+const { getAllDocuments, isFirebaseConfigured } = require('./firebase');
 
 let knowledgeBase = {};
 let lastUpdated = null;
 
 async function loadKnowledgeBase() {
   try {
-    if (!db) {
-      console.warn('⚠️ Firebase no conectado. Se usará la base de datos local como respaldo (solo lectura).');
+    if (!isFirebaseConfigured()) {
+      console.warn('⚠️ Firebase no conectado. Se usará la base local.');
       return loadKnowledgeBaseLocalFallback();
     }
 

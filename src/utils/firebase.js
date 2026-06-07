@@ -50,9 +50,13 @@ async function getAllDocuments(collection) {
   return data;
 }
 
+function isFirebaseConfigured() {
+  return db !== null;
+}
+
 module.exports = {
-  db,
   getDocument,
   saveDocument,
-  getAllDocuments
+  getAllDocuments,
+  isFirebaseConfigured
 };
