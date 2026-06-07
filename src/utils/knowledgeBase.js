@@ -81,7 +81,67 @@ function getRelevantContext(query) {
   return relevantInfo.join('\n\n---\n\n');
 }
 
+function getMediaForTopic(query) {
+  const q = query.toLowerCase();
+  
+  if (!knowledgeBase.media) return null;
+  
+  try {
+    let mediaData;
+    // knowledgeBase.media podria ser un string JSON o un objeto dependiendo de como se guardó
+    if (typeof knowledgeBase.media === 'string') {
+      mediaData = JSON.parse(knowledgeBase.media);
+    } else {
+      mediaData = knowledgeBase.media;
+    }
+
+    // Verificar PDF de la carta
+    if (mediaData.carta_pdf && mediaData.carta_pdf.url && mediaData.carta_pdf.keywords) {
+      if (mediaData.carta_pdf.keywords.some(kw => q.includes(kw))) {
+        return {
+          type: 'document',
+          url: mediaData.carta_pdf.url,
+          filename: mediaData.carta_pdf.filename || 'Carta_Balmoral.pdf',
+          caption: mediaData.carta_pdf.caption || 'Aquí tiene nuestra carta'
+        };
+      }
+    }
+    
+    // Verificar documentos
+    if (mediaData.documentos) {
+      for (const [key, doc] of Object.entries(mediaData.documentos)) {
+        if (doc.url && doc.keywords && doc.keywords.some(kw => q.includes(kw))) {
+          return {
+            type: 'document',
+            url: doc.url,
+            filename: doc.filename || 'Documento.pdf',
+            caption: doc.caption || ''
+          };
+        }
+      }
+    }
+
+    // Verificar fotos
+    if (mediaData.fotos) {
+      for (const [key, foto] of Object.entries(mediaData.fotos)) {
+        if (foto.url && foto.keywords && foto.keywords.some(kw => q.includes(kw))) {
+          return {
+            type: 'image',
+            url: foto.url,
+            caption: foto.caption || ''
+          };
+        }
+      }
+    }
+  } catch (err) {
+    console.error('Error parseando mediaData:', err);
+  }
+  
+  return null;
+}
+
 module.exports = {
   loadKnowledgeBase,
-  getRelevantContext
+  getRelevantContext,
+  getMediaForTopic
 };
