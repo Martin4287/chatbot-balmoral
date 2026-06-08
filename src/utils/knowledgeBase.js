@@ -32,6 +32,11 @@ async function loadKnowledgeBase() {
       }
     }
     
+    // Crear alias para evitar inconsistencia con "restaurant-info" y "restaurant"
+    if (knowledgeBase['restaurant-info'] && !knowledgeBase.restaurant) {
+      knowledgeBase.restaurant = knowledgeBase['restaurant-info'];
+    }
+    
     lastUpdated = new Date();
     console.log('✅ Base de conocimiento sincronizada con Firebase');
     return knowledgeBase;
@@ -67,6 +72,12 @@ function loadKnowledgeBaseLocalFallback() {
         }
       }
     }
+    
+    // Crear alias para evitar inconsistencia con "restaurant-info" y "restaurant"
+    if (knowledgeBase['restaurant-info'] && !knowledgeBase.restaurant) {
+      knowledgeBase.restaurant = knowledgeBase['restaurant-info'];
+    }
+    
     console.log('✅ Base de conocimiento local cargada (Fallback)');
     return knowledgeBase;
   } catch (err) {
@@ -79,7 +90,8 @@ function getRelevantContext(query) {
   let relevantInfo = [];
 
   // Ahora pasamos ABSOLUTAMENTE TODO el cerebro siempre
-  if (knowledgeBase.restaurant) relevantInfo.push('INFORMACIÓN RESTAURANTE:\n' + knowledgeBase.restaurant);
+  const restaurantData = knowledgeBase.restaurant || knowledgeBase['restaurant-info'];
+  if (restaurantData) relevantInfo.push('INFORMACIÓN RESTAURANTE:\n' + restaurantData);
   if (knowledgeBase.horarios) relevantInfo.push('HORARIOS:\n' + knowledgeBase.horarios);
   if (knowledgeBase.eventos) relevantInfo.push('EVENTOS:\n' + knowledgeBase.eventos);
   if (knowledgeBase.menu) relevantInfo.push('CARTA Y MENÚ:\n' + knowledgeBase.menu);

@@ -9,18 +9,17 @@ const { getPersonalityLevel } = require('../utils/knowledgeBase');
 // Inicializar Gemini
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
-function createModel() {
+function createModel(modelName) {
   const level = getPersonalityLevel();
   const systemPrompt = getSystemPrompt(level);
   
   return genAI.getGenerativeModel({
-    model: 'gemini-1.5-flash',
+    model: modelName,
     systemInstruction: systemPrompt,
     generationConfig: {
       temperature: 0.7,
       topP: 0.9,
       topK: 40,
-      maxOutputTokens: 500, // Respuestas concisas para WhatsApp
     },
     safetySettings: [
       { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_ONLY_HIGH' },
@@ -32,7 +31,7 @@ function createModel() {
 }
 
 /**
- * Genera una respuesta inteligente usando Gemini
+ * Genera una respuesta inteligente usando Gemini con rotación de modelos
  * @param {string} userMessage — Mensaje del cliente
  * @param {string} context — Contexto relevante de la base de conocimiento
  * @param {Array} history — Historial de la conversación
@@ -40,19 +39,21 @@ function createModel() {
  * @returns {string} — Respuesta generada
  */
 async function generateAIResponse(userMessage, context, history = [], senderInfo = { numero: 'Desconocido', nombre: 'Cliente' }) {
-  const MAX_RETRIES = 2;
+  const MODELS_TO_TRY = ['gemini-3.5-flash', 'gemini-3.1-flash-lite', 'gemini-2.5-flash', 'gemini-2.0-flash'];
   let lastError;
 
-  for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+  for (const modelName of MODELS_TO_TRY) {
     try {
+      console.log(`🤖 Intentando responder con modelo: ${modelName}`);
+
       // Construir el historial de conversación para Gemini
       const chatHistory = history.map(msg => ({
         role: msg.role === 'assistant' ? 'model' : 'user',
         parts: [{ text: msg.content }]
       }));
 
-      // Iniciar chat con historial dinámico (obteniendo el modelo con la personalidad actual)
-      const chat = createModel().startChat({
+      // Iniciar chat con historial dinámico
+      const chat = createModel(modelName).startChat({
         history: chatHistory,
       });
 
@@ -114,28 +115,19 @@ async function generateAIResponse(userMessage, context, history = [], senderInfo
 
     } catch (error) {
       lastError = error;
-      console.error('❌ Error crudo de Gemini:', error.message);
+      console.error(`❌ Error con modelo ${modelName}:`, error.message);
       
       // Si es error de autenticación, no reintentar
       if (error.message.includes('API key') || error.message.includes('401')) {
         throw new Error('Error de autenticación con Gemini. Verificar API key.');
       }
 
-      // Si es rate limit (429) o sobrecarga (503), esperar y reintentar
-      if (error.message.includes('429') || error.message.includes('quota') || error.message.includes('503') || error.message.includes('Unavailable')) {
-        const waitTime = Math.pow(2, attempt) * 2000; // 4s, 8s
-        console.log(`⏳ Sobrecarga de Gemini. Reintentando en ${waitTime/1000}s (intento ${attempt}/${MAX_RETRIES})...`);
-        await new Promise(resolve => setTimeout(resolve, waitTime));
-        continue;
-      }
-
-      // Otros errores, no reintentar
-      break;
+      console.warn(`⚠️ Modelo ${modelName} falló o no tiene cuota. Probando siguiente modelo...`);
     }
   }
 
-  // FALLBACK: Si Gemini no está disponible, responder con la base de conocimiento
-  console.log('⚠️ Gemini no disponible. Usando respuesta de fallback.');
+  // FALLBACK: Si todos los modelos fallan, usar la respuesta de fallback local
+  console.error('❌ Todos los modelos de Gemini fallaron. Usando respuesta de fallback.');
   return generateFallbackResponse(userMessage);
 }
 
