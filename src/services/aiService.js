@@ -9,7 +9,7 @@ const { SYSTEM_PROMPT } = require('../config/prompts');
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
 const model = genAI.getGenerativeModel({
-  model: 'gemini-2.0-flash',
+  model: 'gemini-2.5-flash',
   systemInstruction: SYSTEM_PROMPT,
   generationConfig: {
     temperature: 0.7,
@@ -61,6 +61,7 @@ async function generateAIResponse(userMessage, context, history = []) {
 
     } catch (error) {
       lastError = error;
+      console.error('❌ Error crudo de Gemini:', error.message);
       
       // Si es error de autenticación, no reintentar
       if (error.message.includes('API key') || error.message.includes('401')) {
