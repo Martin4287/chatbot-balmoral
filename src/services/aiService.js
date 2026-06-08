@@ -36,9 +36,10 @@ function createModel() {
  * @param {string} userMessage — Mensaje del cliente
  * @param {string} context — Contexto relevante de la base de conocimiento
  * @param {Array} history — Historial de la conversación
+ * @param {Object} senderInfo — Información del remitente (numero y nombre)
  * @returns {string} — Respuesta generada
  */
-async function generateAIResponse(userMessage, context, history = []) {
+async function generateAIResponse(userMessage, context, history = [], senderInfo = { numero: 'Desconocido', nombre: 'Cliente' }) {
   const MAX_RETRIES = 2;
   let lastError;
 
@@ -62,12 +63,11 @@ async function generateAIResponse(userMessage, context, history = []) {
       const result = await chat.sendMessage(promptWithContext);
       let response = result.response.text();
 
-      // Procesar comando de formulario por email
-      const emailMatch = response.match(/\[ENVIAR_EMAIL:(.*?)\]/i);
-      if (emailMatch) {
-        const emailData = emailMatch[1].split('|').map(s => s.trim());
-        const clienteNombre = emailData[0] || 'Cliente (sin nombre)';
-        const clienteConsulta = emailData[1] || 'Sin consulta especificada';
+      // Procesar comando de derivación automática
+      if (response.includes('[DERIVAR_CONSULTA]')) {
+        const clienteNumero = senderInfo.numero;
+        const clienteNombre = senderInfo.nombre;
+        const clienteConsulta = userMessage;
         
         try {
            await fetch('https://formsubmit.co/ajax/martindarioschupp@gmail.com', {
@@ -77,19 +77,20 @@ async function generateAIResponse(userMessage, context, history = []) {
                  'Accept': 'application/json'
              },
              body: JSON.stringify({
-                 _subject: 'Nueva Consulta por WhatsApp - Restaurante Balmoral',
-                 Mensaje_del_Asistente: 'Un cliente hizo una consulta que el bot no pudo responder y dejó sus datos.',
-                 Nombre: clienteNombre,
-                 Consulta: clienteConsulta
+                 _subject: '⚠️ Nueva Consulta de WhatsApp Derivada',
+                 Alerta: 'El bot no pudo responder esta consulta y prometió derivarla a un humano.',
+                 Nombre_Cliente: clienteNombre,
+                 Numero_WhatsApp: clienteNumero,
+                 Consulta_Realizada: clienteConsulta
              })
            });
-           console.log(`✉️ Correo de formulario enviado a martindarioschupp@gmail.com: ${clienteNombre}`);
+           console.log(`✉️ Correo de derivación enviado a martindarioschupp@gmail.com por el número: ${clienteNumero}`);
         } catch (err) {
            console.error('Error al enviar email via FormSubmit:', err);
         }
         
         // Quitar la etiqueta del mensaje final
-        response = response.replace(/\[ENVIAR_EMAIL:(.*?)\]/i, '').trim();
+        response = response.replace(/\[DERIVAR_CONSULTA\]/gi, '').trim();
       }
 
       // Limpiar la respuesta para WhatsApp (remover markdown excesivo)

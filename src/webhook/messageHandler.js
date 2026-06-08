@@ -46,8 +46,13 @@ async function handleIncomingMessage(messageData) {
     // Verificar si el usuario pide fotos, carta, menú, documento
     const mediaRequest = getMediaForTopic(messageBody);
 
+    // Obtener información del remitente
+    const senderNumber = sender.replace('@c.us', '');
+    const pushName = messageData.pushname || messageData.pushName || 'Cliente';
+    const senderInfo = { numero: senderNumber, nombre: pushName };
+
     // Generar respuesta con IA
-    const aiResponse = await generateAIResponse(messageBody, context, history);
+    const aiResponse = await generateAIResponse(messageBody, context, history, senderInfo);
 
     // Guardar en historial
     addToHistory(sender, 'user', messageBody);
