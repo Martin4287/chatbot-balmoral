@@ -76,26 +76,34 @@ function loadKnowledgeBaseLocalFallback() {
 }
 
 function getRelevantContext(query) {
-  const q = query.toLowerCase();
   let relevantInfo = [];
 
-  // Siempre incluimos la info básica del restaurante
-  if (knowledgeBase.restaurant) relevantInfo.push(knowledgeBase.restaurant);
+  // Ahora pasamos ABSOLUTAMENTE TODO el cerebro siempre
+  if (knowledgeBase.restaurant) relevantInfo.push('INFORMACIÓN RESTAURANTE:\n' + knowledgeBase.restaurant);
+  if (knowledgeBase.horarios) relevantInfo.push('HORARIOS:\n' + knowledgeBase.horarios);
+  if (knowledgeBase.eventos) relevantInfo.push('EVENTOS:\n' + knowledgeBase.eventos);
+  if (knowledgeBase.menu) relevantInfo.push('CARTA Y MENÚ:\n' + knowledgeBase.menu);
+  if (knowledgeBase.faq) relevantInfo.push('PREGUNTAS FRECUENTES:\n' + knowledgeBase.faq);
   
-  const menuKeywords = ['menu', 'menú', 'carta', 'precio', 'plato', 'cuanto', 'cuánto', 'sale', 'cuesta', 'bife', 'vino', 'carne', 'pasta', 'pescado', 'pollo', 'bebida', 'postre', 'cafe', 'café', 'comer', 'cenar', 'almorzar', 'desayunar'];
-  if (menuKeywords.some(kw => q.includes(kw))) {
-    if (knowledgeBase.menu) relevantInfo.push('CARTA Y MENÚ:\n' + knowledgeBase.menu);
+  // Agregar información de media (URLs de fotos y PDF) para que la IA sepa qué archivos existen
+  if (knowledgeBase.media) {
+    let mediaInfo = typeof knowledgeBase.media === 'string' ? JSON.parse(knowledgeBase.media) : knowledgeBase.media;
+    let mediaTexts = [];
+    if (mediaInfo.carta_pdf && mediaInfo.carta_pdf.url) mediaTexts.push(`Carta PDF: ${mediaInfo.carta_pdf.url}`);
+    if (mediaInfo.fotos) {
+      for (const [key, foto] of Object.entries(mediaInfo.fotos)) {
+        if (foto.url) mediaTexts.push(`Foto de ${key.replace('_', ' ')}: ${foto.url}`);
+      }
+    }
+    if (mediaInfo.documentos) {
+      for (const [key, doc] of Object.entries(mediaInfo.documentos)) {
+        if (doc.url) mediaTexts.push(`Documento de ${key.replace('_', ' ')}: ${doc.url}`);
+      }
+    }
+    if (mediaTexts.length > 0) {
+      relevantInfo.push('ENLACES A FOTOS Y DOCUMENTOS DISPONIBLES:\n' + mediaTexts.join('\n'));
+    }
   }
-  
-  if (q.includes('hora') || q.includes('abren') || q.includes('cierran')) {
-    if (knowledgeBase.horarios) relevantInfo.push('HORARIOS:\n' + knowledgeBase.horarios);
-  }
-  
-  if (q.includes('evento') || q.includes('musica') || q.includes('show')) {
-    if (knowledgeBase.eventos) relevantInfo.push('EVENTOS:\n' + knowledgeBase.eventos);
-  }
-
-  if (knowledgeBase.faq) relevantInfo.push('PREGUNTAS FRECUENTES RELEVANTES:\n' + knowledgeBase.faq);
 
   return relevantInfo.join('\n\n---\n\n');
 }
