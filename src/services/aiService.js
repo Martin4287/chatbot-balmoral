@@ -70,23 +70,39 @@ async function generateAIResponse(userMessage, context, history = [], senderInfo
         const clienteConsulta = userMessage;
         
         try {
-           await fetch('https://formsubmit.co/ajax/martindarioschupp@gmail.com', {
-             method: 'POST',
-             headers: {
-                 'Content-Type': 'application/json',
-                 'Accept': 'application/json'
-             },
-             body: JSON.stringify({
-                 _subject: '⚠️ Nueva Consulta de WhatsApp Derivada',
-                 Alerta: 'El bot no pudo responder esta consulta y prometió derivarla a un humano.',
-                 Nombre_Cliente: clienteNombre,
-                 Numero_WhatsApp: clienteNumero,
-                 Consulta_Realizada: clienteConsulta
-             })
-           });
-           console.log(`✉️ Correo de derivación enviado a martindarioschupp@gmail.com por el número: ${clienteNumero}`);
+          const nodemailer = require('nodemailer');
+          const transporter = nodemailer.createTransport({
+            service: 'gmail',
+            auth: {
+              user: process.env.EMAIL_USER,
+              pass: process.env.EMAIL_PASS
+            }
+          });
+
+          const mailOptions = {
+            from: `"Bot Balmoral" <${process.env.EMAIL_USER}>`,
+            to: process.env.EMAIL_USER, // Send to the restaurant owner
+            subject: '⚠️ Nueva Consulta de WhatsApp Derivada',
+            text: `El bot no pudo responder una consulta y prometió derivarla a un representante.\n\nNombre del Cliente: ${clienteNombre}\nNúmero de WhatsApp: ${clienteNumero}\nConsulta Realizada:\n"${clienteConsulta}"`,
+            html: `
+              <div style="font-family: Arial, sans-serif; padding: 20px; color: #333;">
+                <h2 style="color: #ef4444;">⚠️ Nueva Consulta Derivada</h2>
+                <p>El bot no pudo responder una consulta y prometió derivarla a un representante humano.</p>
+                <div style="background-color: #f3f4f6; padding: 15px; border-radius: 8px; margin: 15px 0;">
+                  <p><strong>Nombre del Cliente:</strong> ${clienteNombre}</p>
+                  <p><strong>Número de WhatsApp:</strong> <a href="https://wa.me/${clienteNumero}">${clienteNumero}</a></p>
+                  <p><strong>Consulta Realizada:</strong></p>
+                  <blockquote style="border-left: 4px solid #ef4444; padding-left: 10px; font-style: italic;">"${clienteConsulta}"</blockquote>
+                </div>
+                <p>Por favor, contacte al cliente a la brevedad.</p>
+              </div>
+            `
+          };
+
+          await transporter.sendMail(mailOptions);
+          console.log(`✉️ Correo de derivación enviado a ${process.env.EMAIL_USER} por el número: ${clienteNumero}`);
         } catch (err) {
-           console.error('Error al enviar email via FormSubmit:', err);
+           console.error('Error al enviar email via Nodemailer:', err);
         }
         
         // Quitar la etiqueta del mensaje final

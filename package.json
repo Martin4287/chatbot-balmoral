@@ -24,6 +24,7 @@
     "express": "^4.21.2",
     "express-basic-auth": "^1.2.1",
     "firebase-admin": "^13.10.0",
+    "nodemailer": "^8.0.10",
     "ultramsg-whatsapp-api": "^1.0.2"
   }
 }
