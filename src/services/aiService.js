@@ -54,7 +54,37 @@ async function generateAIResponse(userMessage, context, history = []) {
 
       // Enviar mensaje y obtener respuesta
       const result = await chat.sendMessage(promptWithContext);
-      const response = result.response.text();
+      let response = result.response.text();
+
+      // Procesar comando de formulario por email
+      const emailMatch = response.match(/\[ENVIAR_EMAIL:(.*?)\]/i);
+      if (emailMatch) {
+        const emailData = emailMatch[1].split('|').map(s => s.trim());
+        const clienteNombre = emailData[0] || 'Cliente (sin nombre)';
+        const clienteConsulta = emailData[1] || 'Sin consulta especificada';
+        
+        try {
+           await fetch('https://formsubmit.co/ajax/martindarioschupp@gmail.com', {
+             method: 'POST',
+             headers: {
+                 'Content-Type': 'application/json',
+                 'Accept': 'application/json'
+             },
+             body: JSON.stringify({
+                 _subject: 'Nueva Consulta por WhatsApp - Restaurante Balmoral',
+                 Mensaje_del_Asistente: 'Un cliente hizo una consulta que el bot no pudo responder y dejó sus datos.',
+                 Nombre: clienteNombre,
+                 Consulta: clienteConsulta
+             })
+           });
+           console.log(`✉️ Correo de formulario enviado a martindarioschupp@gmail.com: ${clienteNombre}`);
+        } catch (err) {
+           console.error('Error al enviar email via FormSubmit:', err);
+        }
+        
+        // Quitar la etiqueta del mensaje final
+        response = response.replace(/\[ENVIAR_EMAIL:(.*?)\]/i, '').trim();
+      }
 
       // Limpiar la respuesta para WhatsApp (remover markdown excesivo)
       return cleanForWhatsApp(response);
