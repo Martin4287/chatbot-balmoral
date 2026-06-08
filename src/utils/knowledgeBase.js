@@ -17,10 +17,18 @@ async function loadKnowledgeBase() {
     
     for (const [key, value] of Object.entries(data)) {
       if (key === 'faq') {
-        const faqItems = value.items || [];
-        knowledgeBase[key] = faqItems.map(item => `P: ${item.pregunta}\nR: ${item.respuesta}`).join('\n\n');
+        if (value.content !== undefined) {
+          knowledgeBase[key] = value.content;
+        } else {
+          const faqItems = value.items || [];
+          knowledgeBase[key] = faqItems.map(item => `P: ${item.pregunta}\nR: ${item.respuesta}`).join('\n\n');
+        }
       } else {
-        knowledgeBase[key] = JSON.stringify(value, null, 2);
+        if (value.content !== undefined) {
+          knowledgeBase[key] = value.content;
+        } else {
+          knowledgeBase[key] = JSON.stringify(value, null, 2);
+        }
       }
     }
     
@@ -44,9 +52,19 @@ function loadKnowledgeBaseLocalFallback() {
       const jsonData = JSON.parse(rawData);
       
       if (key === 'faq') {
-        knowledgeBase[key] = jsonData.map(item => `P: ${item.pregunta}\nR: ${item.respuesta}`).join('\n\n');
+        if (jsonData.content !== undefined) {
+          knowledgeBase[key] = jsonData.content;
+        } else if (Array.isArray(jsonData)) {
+          knowledgeBase[key] = jsonData.map(item => `P: ${item.pregunta}\nR: ${item.respuesta}`).join('\n\n');
+        } else {
+          knowledgeBase[key] = JSON.stringify(jsonData, null, 2);
+        }
       } else {
-        knowledgeBase[key] = JSON.stringify(jsonData, null, 2);
+        if (jsonData.content !== undefined) {
+          knowledgeBase[key] = jsonData.content;
+        } else {
+          knowledgeBase[key] = JSON.stringify(jsonData, null, 2);
+        }
       }
     }
     console.log('✅ Base de conocimiento local cargada (Fallback)');

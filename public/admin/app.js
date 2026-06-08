@@ -78,20 +78,47 @@ function selectTopic(topic, element, niceName) {
   btnSave.disabled = false;
   statusMsg.textContent = '';
   
-  currentJsonObj = knowledgeData[topic];
-  jsonEditor.value = JSON.stringify(currentJsonObj, null, 2);
+  currentJsonObj = knowledgeData[topic] || {};
+  
+  if (topic === 'media') {
+    document.querySelector('.badge').textContent = 'Formato JSON';
+    jsonEditor.value = JSON.stringify(currentJsonObj, null, 2);
+  } else {
+    document.querySelector('.badge').textContent = 'Formato Texto Libre';
+    if (currentJsonObj.content) {
+      jsonEditor.value = currentJsonObj.content;
+    } else if (topic === 'faq' && currentJsonObj.items) {
+      jsonEditor.value = currentJsonObj.items.map(i => `P: ${i.pregunta}\nR: ${i.respuesta}`).join('\n\n');
+    } else {
+      let rawText = '';
+      if (typeof currentJsonObj === 'object') {
+        if (Object.keys(currentJsonObj).length > 0) {
+          rawText = JSON.stringify(currentJsonObj, null, 2);
+        }
+      } else {
+        rawText = currentJsonObj;
+      }
+      jsonEditor.value = rawText;
+    }
+  }
 }
 
 jsonEditor.addEventListener('input', () => {
-  try {
-    JSON.parse(jsonEditor.value);
-    statusMsg.textContent = 'JSON Válido';
+  if (currentTopic === 'media') {
+    try {
+      JSON.parse(jsonEditor.value);
+      statusMsg.textContent = 'JSON Válido';
+      statusMsg.className = 'status-msg success';
+      btnSave.disabled = false;
+    } catch (e) {
+      statusMsg.textContent = 'JSON Inválido';
+      statusMsg.className = 'status-msg error';
+      btnSave.disabled = true;
+    }
+  } else {
+    statusMsg.textContent = 'Texto Libre';
     statusMsg.className = 'status-msg success';
     btnSave.disabled = false;
-  } catch (e) {
-    statusMsg.textContent = 'JSON Inválido';
-    statusMsg.className = 'status-msg error';
-    btnSave.disabled = true;
   }
 });
 
@@ -99,7 +126,13 @@ btnSave.addEventListener('click', async () => {
   if (!currentTopic || btnSave.disabled) return;
   
   try {
-    const newData = JSON.parse(jsonEditor.value);
+    let newData;
+    if (currentTopic === 'media') {
+      newData = JSON.parse(jsonEditor.value);
+    } else {
+      newData = { content: jsonEditor.value };
+    }
+    
     const originalText = btnSave.innerHTML;
     btnSave.innerHTML = '<ion-icon name="sync-outline" class="spin"></ion-icon> Guardando...';
     btnSave.disabled = true;
