@@ -82,7 +82,8 @@ function getRelevantContext(query) {
   // Siempre incluimos la info básica del restaurante
   if (knowledgeBase.restaurant) relevantInfo.push(knowledgeBase.restaurant);
   
-  if (q.includes('menu') || q.includes('menú') || q.includes('carta') || q.includes('precio') || q.includes('plato')) {
+  const menuKeywords = ['menu', 'menú', 'carta', 'precio', 'plato', 'cuanto', 'cuánto', 'sale', 'cuesta', 'bife', 'vino', 'carne', 'pasta', 'pescado', 'pollo', 'bebida', 'postre', 'cafe', 'café', 'comer', 'cenar', 'almorzar', 'desayunar'];
+  if (menuKeywords.some(kw => q.includes(kw))) {
     if (knowledgeBase.menu) relevantInfo.push('CARTA Y MENÚ:\n' + knowledgeBase.menu);
   }
   
