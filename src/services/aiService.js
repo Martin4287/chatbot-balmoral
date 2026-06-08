@@ -121,7 +121,7 @@ async function generateAIResponse(userMessage, context, history = [], senderInfo
         // 2. Enviar WhatsApp de derivación al número de ventas (UltraMSG)
         try {
           const { sendText } = require('./whatsappService');
-          let salesPhone = process.env.SALES_WHATSAPP || '5492235446970';
+          let salesPhone = process.env.SALES_WHATSAPP || '5492233041076';
           if (!salesPhone.endsWith('@c.us')) {
             salesPhone = `${salesPhone}@c.us`;
           }
