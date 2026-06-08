@@ -51,6 +51,24 @@
           </div>
           <textarea id="json-editor" spellcheck="false"></textarea>
         </div>
+        
+        <div id="slider-state" class="editor-state hidden">
+          <div class="editor-header">
+            <span class="badge">Nivel de Emocionalidad</span>
+            <span id="slider-status-msg" class="status-msg"></span>
+          </div>
+          <div class="slider-container" style="flex: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; background: var(--editor-bg); border: 1px solid var(--glass-border); border-radius: 16px; padding: 2rem;">
+            <label for="emotion-slider" style="font-size: 1.2rem; margin-bottom: 2rem;">Personalidad del Bot: <span id="emotion-label" style="color: var(--primary); font-weight: bold;">Equilibrado (3)</span></label>
+            <input type="range" id="emotion-slider" min="1" max="5" value="3" step="1" style="width: 80%; cursor: pointer; height: 8px; background: var(--glass-border); border-radius: 4px; appearance: none; outline: none;">
+            <div class="slider-labels" style="display: flex; justify-content: space-between; width: 80%; margin-top: 1rem; color: var(--text-muted); font-size: 0.9rem;">
+              <span>Serio / Distante</span>
+              <span>Emocional Extremo</span>
+            </div>
+            <div style="margin-top: 3rem; text-align: center; color: var(--text-muted); max-width: 600px; line-height: 1.5;">
+              <p id="emotion-desc">El bot será amable y servicial, manteniendo la formalidad de un buen restaurante. Usará algunos emojis sin exagerar.</p>
+            </div>
+          </div>
+        </div>
       </div>
     </main>
   </div>

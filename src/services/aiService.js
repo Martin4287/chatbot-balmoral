@@ -3,27 +3,33 @@
 // ============================================
 
 const { GoogleGenerativeAI } = require('@google/generative-ai');
-const { SYSTEM_PROMPT } = require('../config/prompts');
+const { getSystemPrompt } = require('../config/prompts');
+const { getPersonalityLevel } = require('../utils/knowledgeBase');
 
 // Inicializar Gemini
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
-const model = genAI.getGenerativeModel({
-  model: 'gemini-2.5-flash',
-  systemInstruction: SYSTEM_PROMPT,
-  generationConfig: {
-    temperature: 0.7,
-    topP: 0.9,
-    topK: 40,
-    maxOutputTokens: 500, // Respuestas concisas para WhatsApp
-  },
-  safetySettings: [
-    { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_ONLY_HIGH' },
-    { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_ONLY_HIGH' },
-    { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_ONLY_HIGH' },
-    { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_ONLY_HIGH' },
-  ]
-});
+function createModel() {
+  const level = getPersonalityLevel();
+  const systemPrompt = getSystemPrompt(level);
+  
+  return genAI.getGenerativeModel({
+    model: 'gemini-2.5-flash',
+    systemInstruction: systemPrompt,
+    generationConfig: {
+      temperature: 0.7,
+      topP: 0.9,
+      topK: 40,
+      maxOutputTokens: 500, // Respuestas concisas para WhatsApp
+    },
+    safetySettings: [
+      { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_ONLY_HIGH' },
+      { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_ONLY_HIGH' },
+      { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_ONLY_HIGH' },
+      { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_ONLY_HIGH' },
+    ]
+  });
+}
 
 /**
  * Genera una respuesta inteligente usando Gemini
@@ -44,8 +50,8 @@ async function generateAIResponse(userMessage, context, history = []) {
         parts: [{ text: msg.content }]
       }));
 
-      // Iniciar chat con historial
-      const chat = model.startChat({
+      // Iniciar chat con historial dinámico (obteniendo el modelo con la personalidad actual)
+      const chat = createModel().startChat({
         history: chatHistory,
       });
 

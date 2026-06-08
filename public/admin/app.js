@@ -18,7 +18,8 @@ const iconMap = {
   faq: 'help-circle-outline',
   eventos: 'calendar-outline',
   restaurant: 'business-outline',
-  media: 'images-outline'
+  media: 'images-outline',
+  personalidad: 'happy-outline'
 };
 
 const titleMap = {
@@ -27,7 +28,8 @@ const titleMap = {
   faq: 'Preguntas Frecuentes',
   eventos: 'Eventos y Shows',
   restaurant: 'Info del Restaurante',
-  media: 'Imágenes y Multimedia'
+  media: 'Imágenes y Multimedia',
+  personalidad: 'Personalidad del Bot'
 };
 
 async function fetchKnowledge() {
@@ -35,6 +37,12 @@ async function fetchKnowledge() {
     const res = await fetch('/api/knowledge');
     if (!res.ok) throw new Error('Error al cargar los datos');
     knowledgeData = await res.json();
+    
+    // Asegurar que exista personalidad
+    if (!knowledgeData.personalidad) {
+      knowledgeData.personalidad = { content: "3" };
+    }
+    
     renderMenu();
   } catch (err) {
     console.error(err);
@@ -64,6 +72,30 @@ function renderMenu() {
   });
 }
 
+const sliderState = document.getElementById('slider-state');
+const emotionSlider = document.getElementById('emotion-slider');
+const emotionLabel = document.getElementById('emotion-label');
+const emotionDesc = document.getElementById('emotion-desc');
+
+const emotionConfigs = {
+  1: { label: 'Serio / Distante (1)', desc: 'El bot será extremadamente serio, distante, cortante y puramente informativo. Cero emociones, sin emojis.' },
+  2: { label: 'Formal (2)', desc: 'El bot será formal y respetuoso. Profesional, sin excesos de amabilidad ni emojis.' },
+  3: { label: 'Equilibrado (3)', desc: 'El bot será amable y servicial, manteniendo la formalidad de un buen restaurante. Usará 1 o 2 emojis.' },
+  4: { label: 'Cálido y Amigable (4)', desc: 'El bot será muy cálido, amigable y entusiasta. Usará exclamaciones y varios emojis frecuentemente.' },
+  5: { label: 'Emocional Extremo (5)', desc: 'El bot será excesivamente cariñoso, eufórico y lleno de emojis. Todo será "¡Fantástico!" o "¡Excelente!".' }
+};
+
+function updateSliderUI(val) {
+  const config = emotionConfigs[val];
+  emotionLabel.textContent = config.label;
+  emotionDesc.textContent = config.desc;
+}
+
+emotionSlider.addEventListener('input', (e) => {
+  updateSliderUI(e.target.value);
+  btnSave.disabled = false;
+});
+
 function selectTopic(topic, element, niceName) {
   // Update active class
   document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
@@ -72,33 +104,52 @@ function selectTopic(topic, element, niceName) {
   currentTopic = topic;
   currentTitle.textContent = niceName;
   
-  // Update Editor
   welcomeState.classList.add('hidden');
-  editorState.classList.remove('hidden');
   btnSave.disabled = false;
   statusMsg.textContent = '';
   
   currentJsonObj = knowledgeData[topic] || {};
-  
-  if (topic === 'media') {
-    document.querySelector('.badge').textContent = 'Formato JSON';
-    jsonEditor.value = JSON.stringify(currentJsonObj, null, 2);
-  } else {
-    document.querySelector('.badge').textContent = 'Formato Texto Libre';
+
+  if (topic === 'personalidad') {
+    editorState.classList.add('hidden');
+    sliderState.classList.remove('hidden');
+    
+    // Set slider value
+    let val = 3;
     if (currentJsonObj.content) {
-      jsonEditor.value = currentJsonObj.content;
-    } else if (topic === 'faq' && currentJsonObj.items) {
-      jsonEditor.value = currentJsonObj.items.map(i => `P: ${i.pregunta}\nR: ${i.respuesta}`).join('\n\n');
+      val = parseInt(currentJsonObj.content) || 3;
+    } else if (typeof currentJsonObj === 'number') {
+      val = currentJsonObj;
+    } else if (currentJsonObj.level) {
+      val = currentJsonObj.level;
+    }
+    emotionSlider.value = val;
+    updateSliderUI(val);
+    btnSave.disabled = true; // disable until changed
+  } else {
+    sliderState.classList.add('hidden');
+    editorState.classList.remove('hidden');
+    
+    if (topic === 'media') {
+      document.querySelector('.badge').textContent = 'Formato JSON';
+      jsonEditor.value = JSON.stringify(currentJsonObj, null, 2);
     } else {
-      let rawText = '';
-      if (typeof currentJsonObj === 'object') {
-        if (Object.keys(currentJsonObj).length > 0) {
-          rawText = JSON.stringify(currentJsonObj, null, 2);
-        }
+      document.querySelector('.badge').textContent = 'Formato Texto Libre';
+      if (currentJsonObj.content) {
+        jsonEditor.value = currentJsonObj.content;
+      } else if (topic === 'faq' && currentJsonObj.items) {
+        jsonEditor.value = currentJsonObj.items.map(i => `P: ${i.pregunta}\nR: ${i.respuesta}`).join('\n\n');
       } else {
-        rawText = currentJsonObj;
+        let rawText = '';
+        if (typeof currentJsonObj === 'object') {
+          if (Object.keys(currentJsonObj).length > 0) {
+            rawText = JSON.stringify(currentJsonObj, null, 2);
+          }
+        } else {
+          rawText = currentJsonObj;
+        }
+        jsonEditor.value = rawText;
       }
-      jsonEditor.value = rawText;
     }
   }
 }
@@ -127,7 +178,9 @@ btnSave.addEventListener('click', async () => {
   
   try {
     let newData;
-    if (currentTopic === 'media') {
+    if (currentTopic === 'personalidad') {
+      newData = { content: emotionSlider.value };
+    } else if (currentTopic === 'media') {
       newData = JSON.parse(jsonEditor.value);
     } else {
       newData = { content: jsonEditor.value };

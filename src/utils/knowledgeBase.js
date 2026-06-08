@@ -157,9 +157,16 @@ function getMediaForTopic(query) {
   
   return null;
 }
+function getPersonalityLevel() {
+  if (knowledgeBase.personalidad !== undefined) {
+    return knowledgeBase.personalidad;
+  }
+  return 3;
+}
 
 module.exports = {
   loadKnowledgeBase,
   getRelevantContext,
-  getMediaForTopic
+  getMediaForTopic,
+  getPersonalityLevel
 };
