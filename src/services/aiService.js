@@ -65,11 +65,21 @@ async function generateAIResponse(userMessage, context, history = [], senderInfo
       let response = result.response.text();
 
       // Procesar comando de derivación automática
-      if (response.includes('[DERIVAR_CONSULTA]')) {
+      const lowerResponse = response.toLowerCase();
+      const lowerQuery = userMessage.toLowerCase();
+      
+      const containsTag = response.includes('[DERIVAR_CONSULTA]');
+      const mentionsDeriveInResponse = lowerResponse.includes('derivar') || lowerResponse.includes('derivación') || lowerResponse.includes('representante') || lowerResponse.includes('nos pondremos en contacto') || lowerResponse.includes('tomado nota');
+      const mentionsReservationInQuery = lowerQuery.includes('reservar') || lowerQuery.includes('reserva') || lowerQuery.includes('mesa para') || lowerQuery.includes('mesa para');
+      
+      const isDeriving = containsTag || (mentionsDeriveInResponse && mentionsReservationInQuery);
+
+      if (isDeriving) {
         const clienteNumero = senderInfo.numero;
         const clienteNombre = senderInfo.nombre;
         const clienteConsulta = userMessage;
         
+        // 1. Enviar correo de derivación (Nodemailer)
         try {
           const nodemailer = require('nodemailer');
           const transporter = nodemailer.createTransport({
@@ -84,16 +94,18 @@ async function generateAIResponse(userMessage, context, history = [], senderInfo
             from: `"Bot Balmoral" <${process.env.EMAIL_USER}>`,
             to: process.env.EMAIL_USER, // Send to the restaurant owner
             subject: '⚠️ Nueva Consulta de WhatsApp Derivada',
-            text: `El bot no pudo responder una consulta y prometió derivarla a un representante.\n\nNombre del Cliente: ${clienteNombre}\nNúmero de WhatsApp: ${clienteNumero}\nConsulta Realizada:\n"${clienteConsulta}"`,
+            text: `El bot derivó una consulta del cliente.\n\nNombre del Cliente: ${clienteNombre}\nNúmero de WhatsApp: ${clienteNumero}\nConsulta Realizada:\n"${clienteConsulta}"\n\nRespuesta del Bot:\n"${response.replace(/\[DERIVAR_CONSULTA\]/gi, '').trim()}"`,
             html: `
               <div style="font-family: Arial, sans-serif; padding: 20px; color: #333;">
                 <h2 style="color: #ef4444;">⚠️ Nueva Consulta Derivada</h2>
-                <p>El bot no pudo responder una consulta y prometió derivarla a un representante humano.</p>
+                <p>El bot derivó una consulta para atención humana.</p>
                 <div style="background-color: #f3f4f6; padding: 15px; border-radius: 8px; margin: 15px 0;">
                   <p><strong>Nombre del Cliente:</strong> ${clienteNombre}</p>
                   <p><strong>Número de WhatsApp:</strong> <a href="https://wa.me/${clienteNumero}">${clienteNumero}</a></p>
                   <p><strong>Consulta Realizada:</strong></p>
                   <blockquote style="border-left: 4px solid #ef4444; padding-left: 10px; font-style: italic;">"${clienteConsulta}"</blockquote>
+                  <p><strong>Respuesta del Bot:</strong></p>
+                  <p style="white-space: pre-wrap; font-size: 0.95em;">${response.replace(/\[DERIVAR_CONSULTA\]/gi, '').trim()}</p>
                 </div>
                 <p>Por favor, contacte al cliente a la brevedad.</p>
               </div>
@@ -104,6 +116,28 @@ async function generateAIResponse(userMessage, context, history = [], senderInfo
           console.log(`✉️ Correo de derivación enviado a ${process.env.EMAIL_USER} por el número: ${clienteNumero}`);
         } catch (err) {
            console.error('Error al enviar email via Nodemailer:', err);
+        }
+
+        // 2. Enviar WhatsApp de derivación al número de ventas (UltraMSG)
+        try {
+          const { sendText } = require('./whatsappService');
+          let salesPhone = process.env.SALES_WHATSAPP || '5492235446970';
+          if (!salesPhone.endsWith('@c.us')) {
+            salesPhone = `${salesPhone}@c.us`;
+          }
+
+          const notificationText = 
+            `⚠️ *NUEVA RESERVA / CONSULTA DERIVADA*\n\n` +
+            `👤 *Cliente:* ${clienteNombre}\n` +
+            `📱 *WhatsApp:* https://wa.me/${clienteNumero}\n\n` +
+            `💬 *Consulta:* "${clienteConsulta}"\n\n` +
+            `🤖 *Respuesta del Bot:* "${response.replace(/\[DERIVAR_CONSULTA\]/gi, '').trim()}"\n\n` +
+            `👉 _Hacé clic en el enlace de WhatsApp para responderle directamente al cliente._`;
+
+          await sendText(salesPhone, notificationText);
+          console.log(`💬 WhatsApp de derivación enviado a ventas (${salesPhone}) por el cliente: ${clienteNumero}`);
+        } catch (err) {
+          console.error('Error al enviar WhatsApp de derivación a ventas:', err.message);
         }
         
         // Quitar la etiqueta del mensaje final
