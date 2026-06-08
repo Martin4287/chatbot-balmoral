@@ -121,10 +121,10 @@ async function generateAIResponse(userMessage, context, history = [], senderInfo
         throw new Error('Error de autenticación con Gemini. Verificar API key.');
       }
 
-      // Si es rate limit (429), esperar y reintentar
-      if (error.message.includes('429') || error.message.includes('quota')) {
+      // Si es rate limit (429) o sobrecarga (503), esperar y reintentar
+      if (error.message.includes('429') || error.message.includes('quota') || error.message.includes('503') || error.message.includes('Unavailable')) {
         const waitTime = Math.pow(2, attempt) * 2000; // 4s, 8s
-        console.log(`⏳ Rate limit de Gemini. Reintentando en ${waitTime/1000}s (intento ${attempt}/${MAX_RETRIES})...`);
+        console.log(`⏳ Sobrecarga de Gemini. Reintentando en ${waitTime/1000}s (intento ${attempt}/${MAX_RETRIES})...`);
         await new Promise(resolve => setTimeout(resolve, waitTime));
         continue;
       }
@@ -136,14 +136,14 @@ async function generateAIResponse(userMessage, context, history = [], senderInfo
 
   // FALLBACK: Si Gemini no está disponible, responder con la base de conocimiento
   console.log('⚠️ Gemini no disponible. Usando respuesta de fallback.');
-  return generateFallbackResponse(userMessage, context);
+  return generateFallbackResponse(userMessage);
 }
 
 /**
  * Genera una respuesta de fallback usando la base de conocimiento directamente
  * Se usa cuando Gemini no está disponible (rate limit, error, etc.)
  */
-function generateFallbackResponse(userMessage, context) {
+function generateFallbackResponse(userMessage) {
   const msg = userMessage.toLowerCase();
 
   // Saludo
@@ -170,30 +170,17 @@ function generateFallbackResponse(userMessage, context) {
   // Si preguntan por el menú o la carta
   if (msg.includes('menu') || msg.includes('menú') || msg.includes('carta') || msg.includes('plato') || msg.includes('precio')) {
     return '📋 *Nuestra Carta*\n\n' +
-      'Contamos con una amplia variedad de opciones:\n' +
-      '- Menú Ejecutivo (Lun a Vie mediodía): $26.000\n' +
-      '- Platos principales (Ojo de Bife, Bondiola, Pesca del día, etc) desde $24.000\n' +
-      '- Pastas caseras desde $21.000\n' +
-      '- Menú Príncipe (Infantil) $19.000\n' +
-      '- Opciones Sin Gluten (Karel)\n\n' +
       'Para ver la carta completa con todos los precios, podés ver nuestro PDF aquí: https://drive.google.com/uc?export=download&id=1TmmIuRXzHFhAoG0zbxL4rZxhCY0uNQd8 ✨';
   }
 
-  // Si hay contexto de FAQ, usarlo
-  if (context && context.includes('PREGUNTAS FRECUENTES RELEVANTES')) {
-    const faqMatch = context.match(/R: (.+?)(?:\n|$)/);
-    if (faqMatch) {
-      return faqMatch[1] + '\n\n¿Puedo ayudarle con algo más? 😊';
-    }
-  }
-
-  // Respuesta genérica amable
+  // Respuesta genérica de error amable
   return '¡Gracias por comunicarse con el Restaurante Balmoral! 🍽️\n\n' +
-    'En este momento estoy procesando su consulta. Mientras tanto, puede contactarnos directamente:\n\n' +
+    'En este momento mi sistema está experimentando una alta demanda y no puedo procesar su consulta correctamente. Por favor intente nuevamente en unos minutos.\n\n' +
+    'Si necesita asistencia inmediata, contáctenos directamente:\n' +
     '📞 (0223) 491-0383\n' +
     '📞 (0223) 491-2916\n' +
     '📧 balmoralrestaurante@gmail.com\n\n' +
-    'Nuestro equipo estará encantado de asistirle. ✨';
+    '¡Disculpe las molestias! ✨';
 }
 
 /**
