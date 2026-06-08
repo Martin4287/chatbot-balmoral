@@ -21,7 +21,13 @@ async function handleIncomingMessage(messageData) {
   const messageBody = (messageData.body || '').trim();
   const messageType = messageData.type;  // text, image, document, etc.
 
-  // Si el mensaje está vacío (ej: sticker, audio sin texto), responder genéricamente
+  // Manejar específicamente audios (UltraMSG usa 'ptt' o 'audio')
+  if (messageType === 'ptt' || messageType === 'audio') {
+    await sendText(sender, '¡Hola! 🍽️ Disculpas, pero por el momento no puedo escuchar mensajes de audio.\n\nPor favor, escribime tu consulta en texto y con gusto te ayudo. ✨');
+    return;
+  }
+
+  // Si el mensaje está vacío (ej: sticker, imagen sin texto), responder genéricamente
   if (!messageBody) {
     await sendText(sender, 
       '¡Buenas! 🍽️ Soy el asistente virtual del Restaurante Balmoral.\n\n' +
