@@ -14,7 +14,7 @@ function createModel() {
   const systemPrompt = getSystemPrompt(level);
   
   return genAI.getGenerativeModel({
-    model: 'gemini-2.5-flash',
+    model: 'gemini-1.5-flash',
     systemInstruction: systemPrompt,
     generationConfig: {
       temperature: 0.7,
@@ -187,11 +187,16 @@ function generateFallbackResponse(userMessage) {
  * Construye el prompt inyectando el contexto de la base de conocimiento
  */
 function buildPromptWithContext(userMessage, context) {
+  const options = { timeZone: 'America/Argentina/Buenos_Aires', weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' };
+  const currentDateTime = new Intl.DateTimeFormat('es-AR', options).format(new Date());
+
   if (!context || context.trim() === '') {
-    return userMessage;
+    return `[CONTEXTO DE SISTEMA: Hoy es ${currentDateTime}]\n\nPregunta del cliente: ${userMessage}`;
   }
 
-  return `[INFORMACIÓN DEL RESTAURANTE RELEVANTE PARA ESTA CONSULTA]
+  return `[CONTEXTO DE SISTEMA: Hoy es ${currentDateTime}]
+
+[INFORMACIÓN DEL RESTAURANTE RELEVANTE PARA ESTA CONSULTA]
 ${context}
 [FIN DE INFORMACIÓN]
 
