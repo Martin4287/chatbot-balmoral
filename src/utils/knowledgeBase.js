@@ -206,89 +206,111 @@ function getMediaForTopic(query, businessId = 'balmoral', history = []) {
   const q = query.toLowerCase();
   const kb = knowledgeBases[businessId] || {};
   const rawKb = rawKnowledgeBases[businessId] || {};
-  
-  // 1. Buscar en fotos generales o cartas del negocio
-  if (kb.media) {
-    try {
-      let mediaData = typeof kb.media === 'string' ? JSON.parse(kb.media) : kb.media;
 
-      // Carta PDF
-      if (mediaData.carta_pdf && mediaData.carta_pdf.url && mediaData.carta_pdf.keywords) {
-        if (mediaData.carta_pdf.keywords.some(kw => q.includes(kw.toLowerCase()))) {
-          return {
-            type: 'document',
-            url: mediaData.carta_pdf.url,
-            filename: mediaData.carta_pdf.filename || 'Carta.pdf',
-            caption: mediaData.carta_pdf.caption || 'Aquí tiene nuestra carta'
-          };
-        }
-      }
-      
-      // Fotos generales
-      if (mediaData.fotos) {
-        for (const [key, foto] of Object.entries(mediaData.fotos)) {
-          if (foto.url && foto.keywords && foto.keywords.some(kw => q.includes(kw.toLowerCase()))) {
+  const isAskingForPhoto = q.includes('foto') || q.includes('imagen') || q.includes('imágenes') || q.includes('mostra') || q.includes('ver');
+  const isAskingForGeneralMenu = q.includes('carta') || q.includes('menu') || q.includes('menú') || q.includes('pdf');
+
+  // Si pide una foto/imagen pero NO de la carta general, priorizamos buscar platos del menú
+  const prioritizeDishes = isAskingForPhoto && !isAskingForGeneralMenu;
+
+  const searchDishes = () => {
+    const menuData = rawKb.menu || {};
+    if (menuData.items && Array.isArray(menuData.items)) {
+      if (isAskingForPhoto) {
+        // 2.1 Coincidencia directa por el nombre del plato en el mensaje actual (ej: "foto de las rabas")
+        for (const item of menuData.items) {
+          if (item.imagen_url && q.includes(item.nombre.toLowerCase())) {
             return {
               type: 'image',
-              url: foto.url,
-              caption: foto.caption || ''
+              url: item.imagen_url,
+              caption: `Aquí tenés la foto de: *${item.nombre}*`
             };
           }
         }
-      }
 
-      // Documentos
-      if (mediaData.documentos) {
-        for (const [key, doc] of Object.entries(mediaData.documentos)) {
-          if (doc.url && doc.keywords && doc.keywords.some(kw => q.includes(kw.toLowerCase()))) {
-            return {
-              type: 'document',
-              url: doc.url,
-              filename: doc.filename || 'Documento.pdf',
-              caption: doc.caption || ''
-            };
-          }
-        }
-      }
-    } catch (err) {
-      console.error('Error parseando mediaData:', err);
-    }
-  }
-
-  // 2. Buscar si pide la foto de un plato específico del menú
-  const menuData = rawKb.menu || {};
-  if (menuData.items && Array.isArray(menuData.items)) {
-    const isAskingForPhoto = q.includes('foto') || q.includes('imagen') || q.includes('imágenes') || q.includes('mostra') || q.includes('ver');
-    
-    if (isAskingForPhoto) {
-      // 2.1 Coincidencia directa por el nombre del plato en el mensaje actual (ej: "foto de las rabas")
-      for (const item of menuData.items) {
-        if (item.imagen_url && q.includes(item.nombre.toLowerCase())) {
-          return {
-            type: 'image',
-            url: item.imagen_url,
-            caption: `Aquí tenés la foto de: *${item.nombre}*`
-          };
-        }
-      }
-
-      // 2.2 Coincidencia contextual: buscar qué platos se mencionaron en el último mensaje enviado por el asistente
-      if (history && history.length > 0) {
-        const lastAssistantMsg = [...history].reverse().find(msg => msg.role === 'assistant');
-        if (lastAssistantMsg) {
-          const lastText = lastAssistantMsg.content.toLowerCase();
-          for (const item of menuData.items) {
-            if (item.imagen_url && lastText.includes(item.nombre.toLowerCase())) {
-              return {
-                type: 'image',
-                url: item.imagen_url,
-                caption: `Aquí tenés la foto de: *${item.nombre}*`
-              };
+        // 2.2 Coincidencia contextual: buscar qué platos se mencionaron en el último mensaje enviado por el asistente
+        if (history && history.length > 0) {
+          const lastAssistantMsg = [...history].reverse().find(msg => msg.role === 'assistant');
+          if (lastAssistantMsg) {
+            const lastText = lastAssistantMsg.content.toLowerCase();
+            for (const item of menuData.items) {
+              if (item.imagen_url && lastText.includes(item.nombre.toLowerCase())) {
+                return {
+                  type: 'image',
+                  url: item.imagen_url,
+                  caption: `Aquí tenés la foto de: *${item.nombre}*`
+                };
+              }
             }
           }
         }
       }
     }
+    return null;
+  };
+
+  const searchGeneralMedia = () => {
+    if (kb.media) {
+      try {
+        let mediaData = typeof kb.media === 'string' ? JSON.parse(kb.media) : kb.media;
+
+        // Carta PDF
+        if (mediaData.carta_pdf && mediaData.carta_pdf.url && mediaData.carta_pdf.keywords) {
+          if (mediaData.carta_pdf.keywords.some(kw => q.includes(kw.toLowerCase()))) {
+            return {
+              type: 'document',
+              url: mediaData.carta_pdf.url,
+              filename: mediaData.carta_pdf.filename || 'Carta.pdf',
+              caption: mediaData.carta_pdf.caption || 'Aquí tiene nuestra carta'
+            };
+          }
+        }
+        
+        // Fotos generales
+        if (mediaData.fotos) {
+          for (const [key, foto] of Object.entries(mediaData.fotos)) {
+            if (foto.url && foto.keywords && foto.keywords.some(kw => q.includes(kw.toLowerCase()))) {
+              return {
+                type: 'image',
+                url: foto.url,
+                caption: foto.caption || ''
+              };
+            }
+          }
+        }
+
+        // Documentos
+        if (mediaData.documentos) {
+          for (const [key, doc] of Object.entries(mediaData.documentos)) {
+            if (doc.url && doc.keywords && doc.keywords.some(kw => q.includes(kw.toLowerCase()))) {
+              return {
+                type: 'document',
+                url: doc.url,
+                filename: doc.filename || 'Documento.pdf',
+                caption: doc.caption || ''
+              };
+            }
+          }
+        }
+      } catch (err) {
+        console.error('Error parseando mediaData:', err);
+      }
+    }
+    return null;
+  };
+
+  if (prioritizeDishes) {
+    const dishResult = searchDishes();
+    if (dishResult) return dishResult;
+    
+    const generalResult = searchGeneralMedia();
+    if (generalResult) return generalResult;
+  } else {
+    const generalResult = searchGeneralMedia();
+    if (generalResult) return generalResult;
+
+    const dishResult = searchDishes();
+    if (dishResult) return dishResult;
   }
   
   return null;
