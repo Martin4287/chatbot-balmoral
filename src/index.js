@@ -30,7 +30,7 @@ app.use('/admin', express.static(path.join(__dirname, '..', 'public', 'admin')))
 app.use('/uploads', express.static(path.join(__dirname, '..', 'public', 'uploads')));
 app.use('/api', adminRoutes);
 
-// Servir la página de inicio de sesión de RESTalk en la raíz
+// Servir la página de inicio de sesión de RISTapp en la raíz
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, '..', 'public', 'login.html'));
 });
@@ -76,7 +76,7 @@ app.post('/webhook/:businessId?', async (req, res) => {
 app.listen(PORT, () => {
   console.log('');
   console.log('🍽️  ═══════════════════════════════════════════════');
-  console.log('    Plataforma RESTalk — Chatbots WhatsApp SaaS');
+  console.log('    Plataforma RISTapp — Chatbots WhatsApp SaaS');
   console.log('    ─────────────────────────────────────────────');
   console.log(`    🌐 Servidor:  http://localhost:${PORT}`);
   console.log(`    📡 Webhook:   http://localhost:${PORT}/webhook`);
