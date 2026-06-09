@@ -16,15 +16,24 @@ const MAX_HISTORY = 10; // Máximo de mensajes por conversación
  * Obtiene o crea la sesión de un usuario de forma segura
  */
 function getOrCreateSession(historyKey) {
+  const TWO_HOURS = 2 * 60 * 60 * 1000;
+  const now = Date.now();
+  if (sessions.has(historyKey)) {
+    const session = sessions.get(historyKey);
+    if (now - session.lastActive > TWO_HOURS) {
+      sessions.delete(historyKey);
+    }
+  }
+
   if (!sessions.has(historyKey)) {
     sessions.set(historyKey, {
       messages: [],
       promoSent: false,
-      lastActive: Date.now()
+      lastActive: now
     });
   }
   const session = sessions.get(historyKey);
-  session.lastActive = Date.now();
+  session.lastActive = now;
   return session;
 }
 
