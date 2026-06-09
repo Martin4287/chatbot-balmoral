@@ -5,7 +5,8 @@ const {
   getAllDocuments, 
   saveDocument, 
   validateBusinessCredentials, 
-  uploadImageToStorage 
+  uploadImageToStorage,
+  registerNewBusiness
 } = require('../utils/firebase');
 const { loadKnowledgeBase } = require('../utils/knowledgeBase');
 const { generateToken, verifyToken } = require('../utils/auth');
@@ -72,6 +73,62 @@ router.post('/auth/login', async (req, res) => {
   } catch (error) {
     console.error('Error en login:', error);
     res.status(500).json({ error: 'Error interno de autenticación' });
+  }
+});
+
+// Endpoint de Registro de Nuevo Negocio (SaaS)
+router.post('/auth/register', async (req, res) => {
+  const { name, username, password, email, phone, instance, token } = req.body;
+  
+  if (!name || !username || !password) {
+    return res.status(400).json({ error: 'Nombre del negocio, usuario y contraseña son requeridos.' });
+  }
+  
+  try {
+    if (!isFirebaseConfigured()) {
+      return res.status(500).json({ error: 'Firebase no está configurado en este servidor.' });
+    }
+    
+    // Generar un businessId único sanitizado
+    const businessId = name.trim().toLowerCase()
+      .normalize('NFD').replace(/[\u0300-\u036f]/g, '') // Quitar acentos
+      .replace(/[^a-z0-9\s-]/g, '')                    // Quitar caracteres especiales
+      .replace(/\s+/g, '-')                            // Espacios a guiones
+      .replace(/-+/g, '-');                            // Colapsar guiones dobles
+      
+    if (!businessId) {
+      return res.status(400).json({ error: 'El nombre del negocio no es válido.' });
+    }
+    
+    // Configuración inicial del negocio
+    const configData = {
+      name: name.trim(),
+      username: username.trim().toLowerCase(),
+      password,
+      ultramsgInstance: instance ? instance.trim() : '',
+      ultramsgToken: token ? token.trim() : '',
+      salesPhone: phone ? phone.trim() : '',
+      notificationEmail: email ? email.trim() : ''
+    };
+    
+    // Registrar e inicializar base
+    await registerNewBusiness(businessId, configData);
+    
+    // Pre-cargar en caché la memoria del bot para este nuevo negocio
+    await loadKnowledgeBase(businessId);
+    
+    // Generar token de sesión para ingresarlo de inmediato
+    const sessionToken = generateToken(businessId);
+    
+    res.json({
+      success: true,
+      token: sessionToken,
+      businessId,
+      name: configData.name
+    });
+  } catch (error) {
+    console.error('Error registrando nuevo negocio:', error.message);
+    res.status(400).json({ error: error.message || 'Error interno de registro.' });
   }
 });
 

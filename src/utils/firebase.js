@@ -121,6 +121,99 @@ async function uploadImageToStorage(businessId, fileName, mimeType, base64Data) 
   }
 }
 
+/**
+ * Registra un nuevo negocio e inicializa su base de conocimiento por defecto
+ * @param {string} businessId 
+ * @param {Object} configData 
+ */
+async function registerNewBusiness(businessId, configData) {
+  if (!db) throw new Error('Firebase no está configurado');
+  
+  // 1. Verificar si el businessId ya existe
+  const docRef = db.collection('businesses').doc(businessId);
+  const doc = await docRef.get();
+  if (doc.exists) {
+    throw new Error('El nombre de este negocio ya está registrado.');
+  }
+  
+  // 2. Verificar si el username ya está en uso
+  const usernameQuery = await db.collection('businesses')
+    .where('username', '==', configData.username.trim().toLowerCase())
+    .limit(1)
+    .get();
+    
+  if (!usernameQuery.empty) {
+    throw new Error('El nombre de usuario ya está en uso.');
+  }
+  
+  // 3. Guardar configuración del negocio
+  await docRef.set({
+    name: configData.name,
+    username: configData.username.trim().toLowerCase(),
+    password: configData.password,
+    ultramsgInstance: configData.ultramsgInstance || '',
+    ultramsgToken: configData.ultramsgToken || '',
+    salesPhone: configData.salesPhone || '',
+    notificationEmail: configData.notificationEmail || '',
+    geminiApiKey: ''
+  });
+  
+  // 4. Inicializar subcolección 'knowledge' con datos estándar de base
+  const kbRef = docRef.collection('knowledge');
+  
+  // restaurant-info
+  await kbRef.doc('restaurant-info').set({
+    nombre: configData.name,
+    direccion: '',
+    direccion_maps: '',
+    wifi: '',
+    contacto: configData.salesPhone || ''
+  });
+  
+  // personalidad
+  await kbRef.doc('personalidad').set({
+    level: 3
+  });
+  
+  // horarios por defecto para toda la semana
+  const defaultHorarios = { dias: {} };
+  const dias = ['lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado', 'domingo'];
+  dias.forEach(d => {
+    defaultHorarios.dias[d] = {
+      abierto: true,
+      almuerzo: { de: '12:00', a: '15:00' },
+      cena: { de: '20:00', a: '23:30' }
+    };
+  });
+  await kbRef.doc('horarios').set(defaultHorarios);
+  
+  // menu en blanco
+  await kbRef.doc('menu').set({
+    items: []
+  });
+  
+  // faq estándar
+  await kbRef.doc('faq').set({
+    items: [
+      { 
+        pregunta: '¿Cómo hago una reserva?', 
+        respuesta: 'Puede indicarme su nombre, cantidad de personas, fecha y hora y con gusto tomaré nota de su reserva para derivarla al equipo, quienes le confirmarán a la brevedad.' 
+      }
+    ]
+  });
+  
+  // media vacío
+  await kbRef.doc('media').set({
+    carta_pdf: { url: '', keywords: ['menu', 'carta', 'platos'] },
+    fotos: {
+      salon: { url: '', keywords: ['salon', 'lugar', 'fotos'] },
+      fachada: { url: '', keywords: ['entrada', 'fachada', 'frente'] }
+    }
+  });
+  
+  return true;
+}
+
 function isFirebaseConfigured() {
   return db !== null;
 }
@@ -131,6 +224,7 @@ module.exports = {
   getAllDocuments,
   isFirebaseConfigured,
   validateBusinessCredentials,
-  uploadImageToStorage
+  uploadImageToStorage,
+  registerNewBusiness
 };
 
