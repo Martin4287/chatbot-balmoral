@@ -59,7 +59,7 @@ async function fetchKnowledge() {
     if (res.status === 401) {
       // Token vencido
       localStorage.removeItem('admin_token');
-      window.location.href = '/admin/login.html';
+      window.location.href = '/';
       return;
     }
 
