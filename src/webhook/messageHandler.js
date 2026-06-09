@@ -4,7 +4,7 @@
 
 const { generateAIResponse } = require('../services/aiService');
 const { sendText, sendImage, sendDocument } = require('../services/whatsappService');
-const { getRelevantContext, getMediaForTopic, getBusinessConfig } = require('../utils/knowledgeBase');
+const { getRelevantContext, getMediaForTopic, getBusinessConfig, getCustomPrompt } = require('../utils/knowledgeBase');
 const { log } = require('../utils/logger');
 
 // Almacén de sesiones en memoria para aislar historiales y guardar estado (ej. promociones enviadas)
@@ -109,9 +109,7 @@ async function handleIncomingMessage(messageData, businessId = 'balmoral') {
     let aiResponse = await generateAIResponse(messageBody, context, history, senderInfo, businessId);
 
     // Adjuntar la sugerencia / Happy Hour (customPrompt de eventos) solo una vez y al final de la conversación
-    const rawKb = rawKnowledgeBases[businessId] || {};
-    const eventosData = rawKb.eventos || {};
-    const customPrompt = eventosData.customPrompt || '';
+    const customPrompt = getCustomPrompt(businessId);
 
     if (customPrompt && !session.promoSent && isConversationEnding(messageBody, aiResponse)) {
       aiResponse = `${aiResponse}\n\n${customPrompt}`;

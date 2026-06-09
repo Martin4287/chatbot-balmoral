@@ -327,10 +327,17 @@ function getBusinessConfig(businessId = 'balmoral') {
   return businessConfigs[businessId];
 }
 
+function getCustomPrompt(businessId) {
+  const rawKb = rawKnowledgeBases[businessId] || {};
+  const eventos = rawKb.eventos || {};
+  return eventos.customPrompt || '';
+}
+
 module.exports = {
   loadKnowledgeBase,
   getRelevantContext,
   getMediaForTopic,
   getPersonalityLevel,
-  getBusinessConfig
+  getBusinessConfig,
+  getCustomPrompt
 };
