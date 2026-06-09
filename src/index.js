@@ -52,7 +52,8 @@ app.post('/webhook/:businessId?', async (req, res) => {
     const messageData = data.data;
 
     // Ignorar mensajes propios o de grupos
-    if (messageData.from === 'me' || messageData.fromMe === true) return;
+    const isFromMe = messageData.fromMe === true || messageData.fromMe === 1 || messageData.fromMe === '1' || String(messageData.fromMe).toLowerCase() === 'true' || messageData.from === 'me';
+    if (isFromMe) return;
     if (messageData.isGroup === true) return;
 
     log('📩 Mensaje recibido', {
