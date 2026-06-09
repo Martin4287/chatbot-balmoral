@@ -27,6 +27,7 @@ loadKnowledgeBase().then(() => {
 
 // Panel Admin Frontend y Backend (Acceso libre a estáticos, seguridad en las APIs)
 app.use('/admin', express.static(path.join(__dirname, '..', 'public', 'admin')));
+app.use('/uploads', express.static(path.join(__dirname, '..', 'public', 'uploads')));
 app.use('/api', adminRoutes);
 
 // Servir la página de inicio de sesión de RESTalk en la raíz

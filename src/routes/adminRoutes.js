@@ -179,7 +179,7 @@ router.post('/knowledge/:topic', requireAuth, async (req, res) => {
   }
 });
 
-// 5. Cargar imagen a Firebase Storage
+// 5. Cargar imagen a Firebase Storage (con fallback a local si no está activado en Firebase Console)
 router.post('/upload', requireAuth, async (req, res) => {
   const { fileName, mimeType, base64Data } = req.body;
   if (!fileName || !mimeType || !base64Data) {
@@ -190,8 +190,30 @@ router.post('/upload', requireAuth, async (req, res) => {
     const publicUrl = await uploadImageToStorage(req.businessId, fileName, mimeType, base64Data);
     res.json({ success: true, url: publicUrl });
   } catch (error) {
-    console.error(`Error cargando archivo para ${req.businessId}:`, error);
-    res.status(500).json({ error: 'No se pudo subir la imagen en Storage. Asegúrese de tener habilitado Firebase Storage.' });
+    console.warn(`⚠️ Falló la subida a Firebase Storage para ${req.businessId}. Usando fallback local. Motivo:`, error.message);
+    try {
+      const fs = require('fs');
+      const path = require('path');
+      const uploadsDir = path.join(__dirname, '..', '..', 'public', 'uploads');
+      if (!fs.existsSync(uploadsDir)) {
+        fs.mkdirSync(uploadsDir, { recursive: true });
+      }
+      
+      const cleanFileName = `${Date.now()}_${fileName.replace(/[^a-zA-Z0-9.-]/g, '_')}`;
+      const localFilePath = path.join(uploadsDir, cleanFileName);
+      const buffer = Buffer.from(base64Data, 'base64');
+      fs.writeFileSync(localFilePath, buffer);
+      
+      const host = req.get('host');
+      const protocol = req.headers['x-forwarded-proto'] || req.protocol;
+      const publicUrl = `${protocol}://${host}/uploads/${cleanFileName}`;
+      
+      console.log(`✅ Archivo guardado localmente en fallback: ${publicUrl}`);
+      res.json({ success: true, url: publicUrl });
+    } catch (localError) {
+      console.error(`❌ Falló también la subida local:`, localError.message);
+      res.status(500).json({ error: 'No se pudo subir la imagen. Asegúrese de tener habilitado Firebase Storage o almacenamiento en el servidor.' });
+    }
   }
 });
 

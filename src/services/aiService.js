@@ -234,10 +234,15 @@ function generateFallbackResponse(userMessage, businessId = 'balmoral') {
  * @returns {Object} { items: [ { nombre, descripcion, precio, categoria } ] }
  */
 async function parseMenuFromDocument(fileBase64, mimeType) {
-  try {
-    // Usamos el modelo flash por defecto
-    const model = defaultGenAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
-    const prompt = `Analizá esta imagen o PDF de un menú de restaurante y extraé todos los platos y bebidas que encuentres.
+  const MODELS_TO_TRY = [
+    'gemini-2.5-flash',
+    'gemini-2.0-flash',
+    'gemini-3.5-flash',
+    'gemini-flash-latest',
+    'gemini-3.1-flash-lite'
+  ];
+
+  const prompt = `Analizá esta imagen o PDF de un menú de restaurante y extraé todos los platos y bebidas que encuentres.
 Extraé de forma precisa:
 - nombre (el nombre del plato o bebida, ej: "Milanesa Napolitana")
 - descripcion (ingredientes, acompañamientos o detalles, si los hay)
@@ -256,32 +261,43 @@ Respondé ÚNICAMENTE con un objeto JSON válido que cumpla con el siguiente for
   ]
 }`;
 
-    const result = await model.generateContent([
-      {
-        inlineData: {
-          data: fileBase64,
-          mimeType: mimeType
-        }
-      },
-      prompt
-    ]);
+  let lastError;
+  for (const modelName of MODELS_TO_TRY) {
+    try {
+      console.log(`🤖 Intentando parsear menú con modelo: ${modelName}`);
+      const model = defaultGenAI.getGenerativeModel({ model: modelName });
+      const result = await model.generateContent([
+        {
+          inlineData: {
+            data: fileBase64,
+            mimeType: mimeType
+          }
+        },
+        prompt
+      ]);
 
-    let text = result.response.text();
-    // Limpiar posibles bloques de código markdown
-    text = text.replace(/```json/g, '').replace(/```/g, '').trim();
-    
-    // Si Gemini devolvió algo de texto antes/después del JSON, buscar los corchetes
-    const jsonStart = text.indexOf('{');
-    const jsonEnd = text.lastIndexOf('}');
-    if (jsonStart !== -1 && jsonEnd !== -1) {
-      text = text.substring(jsonStart, jsonEnd + 1);
+      let text = result.response.text();
+      // Limpiar posibles bloques de código markdown
+      text = text.replace(/```json/g, '').replace(/```/g, '').trim();
+      
+      // Si Gemini devolvió algo de texto antes/después del JSON, buscar los corchetes
+      const jsonStart = text.indexOf('{');
+      const jsonEnd = text.lastIndexOf('}');
+      if (jsonStart !== -1 && jsonEnd !== -1) {
+        text = text.substring(jsonStart, jsonEnd + 1);
+      }
+      
+      const parsed = JSON.parse(text);
+      console.log(`✅ Menú parseado con éxito usando el modelo ${modelName}`);
+      return parsed;
+    } catch (error) {
+      lastError = error;
+      console.warn(`⚠️ Modelo ${modelName} falló al parsear menú:`, error.message);
     }
-    
-    return JSON.parse(text);
-  } catch (error) {
-    console.error('❌ Error al parsear menú con Gemini:', error.message);
-    throw error;
   }
+
+  console.error('❌ Todos los modelos de Gemini fallaron para parsear el menú.');
+  throw lastError || new Error('No se pudo analizar la carta con ninguno de los modelos de Gemini.');
 }
 
 /**
