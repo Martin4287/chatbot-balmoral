@@ -166,7 +166,7 @@ function getRelevantContext(query, businessId = 'balmoral') {
   const restaurantData = kb.restaurant || kb['restaurant-info'];
   if (restaurantData) relevantInfo.push('INFORMACIÓN GENERAL:\n' + restaurantData);
   if (kb.horarios) relevantInfo.push('HORARIOS DE ATENCIÓN:\n' + kb.horarios);
-  if (kb.eventos) relevantInfo.push('EVENTOS:\n' + kb.eventos);
+  // Omitimos kb.eventos para proteger credenciales y evitar que el bot repita la promoción de Happy Hour en cada respuesta.
   if (kb.menu) relevantInfo.push('CARTA Y MENÚ:\n' + kb.menu);
   if (kb.faq) relevantInfo.push('PREGUNTAS FRECUENTES:\n' + kb.faq);
   
@@ -200,8 +200,9 @@ function getRelevantContext(query, businessId = 'balmoral') {
  * Resuelve si un mensaje solicita algún recurso multimedia (PDF o imagen de plato)
  * @param {string} query 
  * @param {string} businessId 
+ * @param {Array} history
  */
-function getMediaForTopic(query, businessId = 'balmoral') {
+function getMediaForTopic(query, businessId = 'balmoral', history = []) {
   const q = query.toLowerCase();
   const kb = knowledgeBases[businessId] || {};
   const rawKb = rawKnowledgeBases[businessId] || {};
@@ -260,6 +261,7 @@ function getMediaForTopic(query, businessId = 'balmoral') {
     const isAskingForPhoto = q.includes('foto') || q.includes('imagen') || q.includes('imágenes') || q.includes('mostra') || q.includes('ver');
     
     if (isAskingForPhoto) {
+      // 2.1 Coincidencia directa por el nombre del plato en el mensaje actual (ej: "foto de las rabas")
       for (const item of menuData.items) {
         if (item.imagen_url && q.includes(item.nombre.toLowerCase())) {
           return {
@@ -267,6 +269,23 @@ function getMediaForTopic(query, businessId = 'balmoral') {
             url: item.imagen_url,
             caption: `Aquí tenés la foto de: *${item.nombre}*`
           };
+        }
+      }
+
+      // 2.2 Coincidencia contextual: buscar qué platos se mencionaron en el último mensaje enviado por el asistente
+      if (history && history.length > 0) {
+        const lastAssistantMsg = [...history].reverse().find(msg => msg.role === 'assistant');
+        if (lastAssistantMsg) {
+          const lastText = lastAssistantMsg.content.toLowerCase();
+          for (const item of menuData.items) {
+            if (item.imagen_url && lastText.includes(item.nombre.toLowerCase())) {
+              return {
+                type: 'image',
+                url: item.imagen_url,
+                caption: `Aquí tenés la foto de: *${item.nombre}*`
+              };
+            }
+          }
         }
       }
     }

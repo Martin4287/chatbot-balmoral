@@ -7,10 +7,53 @@ const { sendText, sendImage, sendDocument } = require('../services/whatsappServi
 const { getRelevantContext, getMediaForTopic, getBusinessConfig } = require('../utils/knowledgeBase');
 const { log } = require('../utils/logger');
 
-// Almacén de historial de conversación (en memoria)
-// Indexado por la combinación "businessId:sender" para aislar historiales por negocio
-const conversationHistory = new Map();
+// Almacén de sesiones en memoria para aislar historiales y guardar estado (ej. promociones enviadas)
+// Indexado por la combinación "businessId:sender"
+const sessions = new Map();
 const MAX_HISTORY = 10; // Máximo de mensajes por conversación
+
+/**
+ * Obtiene o crea la sesión de un usuario de forma segura
+ */
+function getOrCreateSession(historyKey) {
+  if (!sessions.has(historyKey)) {
+    sessions.set(historyKey, {
+      messages: [],
+      promoSent: false,
+      lastActive: Date.now()
+    });
+  }
+  const session = sessions.get(historyKey);
+  session.lastActive = Date.now();
+  return session;
+}
+
+/**
+ * Determina si la conversación está cerrando o finalizando
+ */
+function isConversationEnding(userMessage, aiResponse) {
+  const cleanUserMsg = userMessage.toLowerCase().trim();
+  const cleanResponse = aiResponse.toLowerCase();
+
+  // Palabras clave de agradecimiento o despedida del cliente
+  const userClosingKeywords = [
+    'gracias', 'muchas gracias', 'chau', 'adios', 'adiós', 
+    'buenisimo', 'buenísimo', 'perfecto', 'entendido', 'ok', 
+    'listo', 'excelente', 'espectacular', 'joya', 'dale'
+  ];
+
+  // Si el mensaje del usuario es muy corto y contiene palabras de cierre
+  const isUserClosing = cleanUserMsg.length < 20 && userClosingKeywords.some(kw => cleanUserMsg.includes(kw));
+
+  // Palabras clave de despedida o cierre por parte de la IA
+  const aiClosingKeywords = [
+    'quedo a disposición', 'quedo a su disposición', 'lo esperamos', 
+    'cualquier otra consulta', 'reserva para probarlo', 'realizar una reserva'
+  ];
+  const isAiClosing = aiClosingKeywords.some(kw => cleanResponse.includes(kw));
+
+  return isUserClosing || isAiClosing;
+}
 
 /**
  * Procesa un mensaje entrante de WhatsApp
@@ -47,14 +90,15 @@ async function handleIncomingMessage(messageData, businessId = 'balmoral') {
   }
 
   try {
-    // Obtener historial aislado de la conversación
-    const history = getConversationHistory(historyKey);
+    // Obtener la sesión e historial aislado
+    const session = getOrCreateSession(historyKey);
+    const history = session.messages;
 
     // Obtener contexto relevante de la base de conocimiento de este negocio
     const context = getRelevantContext(messageBody, businessId);
 
-    // Verificar si solicita algún recurso multimedia (foto general o de plato)
-    const mediaRequest = getMediaForTopic(messageBody, businessId);
+    // Verificar si solicita algún recurso multimedia (foto general o de plato), pasando el historial
+    const mediaRequest = getMediaForTopic(messageBody, businessId, history);
 
     // Obtener información del remitente
     const senderNumber = sender.replace('@c.us', '');
@@ -62,7 +106,17 @@ async function handleIncomingMessage(messageData, businessId = 'balmoral') {
     const senderInfo = { numero: senderNumber, nombre: pushName };
 
     // Generar respuesta con IA
-    const aiResponse = await generateAIResponse(messageBody, context, history, senderInfo, businessId);
+    let aiResponse = await generateAIResponse(messageBody, context, history, senderInfo, businessId);
+
+    // Adjuntar la sugerencia / Happy Hour (customPrompt de eventos) solo una vez y al final de la conversación
+    const rawKb = rawKnowledgeBases[businessId] || {};
+    const eventosData = rawKb.eventos || {};
+    const customPrompt = eventosData.customPrompt || '';
+
+    if (customPrompt && !session.promoSent && isConversationEnding(messageBody, aiResponse)) {
+      aiResponse = `${aiResponse}\n\n${customPrompt}`;
+      session.promoSent = true; // Marcar como enviado en la sesión actual
+    }
 
     // Guardar en historial
     addToHistory(historyKey, 'user', messageBody);
@@ -111,23 +165,19 @@ async function handleMediaResponse(businessConfig, sender, media) {
  * Obtiene el historial de conversación de una clave
  */
 function getConversationHistory(historyKey) {
-  return conversationHistory.get(historyKey) || [];
+  return getOrCreateSession(historyKey).messages;
 }
 
 /**
  * Agrega un mensaje al historial de conversación
  */
 function addToHistory(historyKey, role, content) {
-  if (!conversationHistory.has(historyKey)) {
-    conversationHistory.set(historyKey, []);
-  }
-
-  const history = conversationHistory.get(historyKey);
-  history.push({ role, content, timestamp: Date.now() });
+  const session = getOrCreateSession(historyKey);
+  session.messages.push({ role, content, timestamp: Date.now() });
 
   // Mantener solo los últimos N mensajes (usuario + bot)
-  if (history.length > MAX_HISTORY * 2) {
-    history.splice(0, history.length - MAX_HISTORY * 2);
+  if (session.messages.length > MAX_HISTORY * 2) {
+    session.messages.splice(0, session.messages.length - MAX_HISTORY * 2);
   }
 
   // Limpiar conversaciones viejas (más de 2 horas sin actividad)
@@ -141,12 +191,9 @@ function cleanOldConversations() {
   const TWO_HOURS = 2 * 60 * 60 * 1000;
   const now = Date.now();
 
-  for (const [key, history] of conversationHistory.entries()) {
-    if (history.length > 0) {
-      const lastMessage = history[history.length - 1];
-      if (now - lastMessage.timestamp > TWO_HOURS) {
-        conversationHistory.delete(key);
-      }
+  for (const [key, session] of sessions.entries()) {
+    if (now - session.lastActive > TWO_HOURS) {
+      sessions.delete(key);
     }
   }
 }
