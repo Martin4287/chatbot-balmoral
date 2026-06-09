@@ -59,7 +59,8 @@ async function sendText(businessConfig, to, body) {
 async function sendImage(businessConfig, to, imageUrl, caption = '') {
   try {
     const api = getApiClient(businessConfig);
-    const response = await api.sendImageMessage(to, imageUrl, caption);
+    // Firma de ultramsg-whatsapp-api: sendImageMessage(to, caption, image, priority, referenceId, nocache)
+    const response = await api.sendImageMessage(to, caption, imageUrl);
     
     if (response.error) {
       console.error(`❌ Error UltraMSG imagen [${businessConfig.businessId}]:`, response.error);
@@ -83,7 +84,8 @@ async function sendImage(businessConfig, to, imageUrl, caption = '') {
 async function sendDocument(businessConfig, to, docUrl, filename = 'documento.pdf', caption = '') {
   try {
     const api = getApiClient(businessConfig);
-    const response = await api.sendDocumentMessage(to, docUrl, filename, caption);
+    // Firma de ultramsg-whatsapp-api: sendDocumentMessage(to, filename, document, priority, referenceId, nocache)
+    const response = await api.sendDocumentMessage(to, filename, docUrl);
     
     if (response.error) {
       console.error(`❌ Error UltraMSG documento [${businessConfig.businessId}]:`, response.error);
@@ -108,7 +110,8 @@ async function sendLocation(businessConfig, to, lat = '-38.0023', lng = '-57.537
   try {
     const api = getApiClient(businessConfig);
     const finalAddress = address || `${businessConfig.name}`;
-    const response = await api.sendLocationMessage(to, lat, lng, finalAddress);
+    // Firma de ultramsg-whatsapp-api: sendLocationMessage(to, address, lat, lng, priority, referenceId)
+    const response = await api.sendLocationMessage(to, finalAddress, lat, lng);
     
     if (response.error) {
       console.error(`❌ Error UltraMSG ubicación [${businessConfig.businessId}]:`, response.error);
