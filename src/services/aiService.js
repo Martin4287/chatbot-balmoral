@@ -72,8 +72,8 @@ async function generateAIResponse(userMessage, context, history = [], senderInfo
         history: chatHistory,
       });
 
-      // Construir el prompt con contexto
-      const promptWithContext = buildPromptWithContext(userMessage, context);
+      // Construir el prompt con contexto indicando si es inicio de conversación
+      const promptWithContext = buildPromptWithContext(userMessage, context, history.length === 0);
 
       // Enviar mensaje y obtener respuesta
       const result = await chat.sendMessage(promptWithContext);
@@ -87,7 +87,7 @@ async function generateAIResponse(userMessage, context, history = [], senderInfo
       const mentionsDeriveInResponse = lowerResponse.includes('derivar') || lowerResponse.includes('derivación') || lowerResponse.includes('representante') || lowerResponse.includes('nos pondremos en contacto') || lowerResponse.includes('tomado nota');
       const mentionsReservationInQuery = lowerQuery.includes('reservar') || lowerQuery.includes('reserva') || lowerQuery.includes('mesa para');
       
-      const isDeriving = containsTag || (mentionsDeriveInResponse && mentionsReservationInQuery);
+      const isDeriving = containsTag || mentionsDeriveInResponse;
 
       if (isDeriving) {
         const clienteNumero = senderInfo.numero;
@@ -301,17 +301,25 @@ Respondé ÚNICAMENTE con un objeto JSON válido que cumpla con el siguiente for
 }
 
 /**
- * Construye el prompt inyectando el contexto de la base de conocimiento
+ * Construye el prompt inyectando el contexto de la base de conocimiento y reglas de saludo
  */
-function buildPromptWithContext(userMessage, context) {
-  const options = { timeZone: 'America/Argentina/Buenos_Aires', weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' };
+function buildPromptWithContext(userMessage, context, isNewConversation = true) {
+  const options = { timeZone: 'America/Argentina/Buenos_Aires', weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false };
   const currentDateTime = new Intl.DateTimeFormat('es-AR', options).format(new Date());
 
+  const conversationStatusRule = isNewConversation
+    ? `[INSTRUCCIÓN DE SALUDO: Este es el inicio de la conversación con el cliente. Saludá obligatoriamente de acuerdo a la hora actual (${currentDateTime}) y atendé su consulta. Evitá saludos repetitivos.]`
+    : `[INSTRUCCIÓN DE SALUDO: Esta es una conversación en curso (ya se saludaron previamente). NO vuelvas a saludar al cliente con palabras como "Hola", "Buen día", "Buenos días", "Buenas tardes", "Buenas noches" ni similares. Respondé directamente a la consulta del cliente sin saludar de nuevo, manteniendo la fluidez de la conversación.]`;
+
   if (!context || context.trim() === '') {
-    return `[CONTEXTO DE SISTEMA: Hoy es ${currentDateTime}]\n\nPregunta del cliente: ${userMessage}`;
+    return `[CONTEXTO DE SISTEMA: Hoy es ${currentDateTime}]
+${conversationStatusRule}
+
+Pregunta del cliente: ${userMessage}`;
   }
 
   return `[CONTEXTO DE SISTEMA: Hoy es ${currentDateTime}]
+${conversationStatusRule}
 
 [INFORMACIÓN DEL RESTAURANTE RELEVANTE PARA ESTA CONSULTA]
 ${context}

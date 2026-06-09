@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { 
   isFirebaseConfigured, 
+  getDocument,
   getAllDocuments, 
   saveDocument, 
   validateBusinessCredentials, 
@@ -170,6 +171,18 @@ router.post('/knowledge/:topic', requireAuth, async (req, res) => {
     const data = req.body;
     
     await saveDocument(`businesses/${req.businessId}/knowledge`, topic, data);
+    
+    // Si se actualizan los datos de conexión/eventos, sincronizar con el documento principal del negocio
+    if (topic === 'eventos') {
+      const mainConfig = await getDocument('businesses', req.businessId) || {};
+      mainConfig.ultramsgToken = data.token || '';
+      mainConfig.ultramsgInstance = data.instance || '';
+      mainConfig.salesPhone = data.phone || '';
+      mainConfig.notificationEmail = data.email || '';
+      await saveDocument('businesses', req.businessId, mainConfig);
+      console.log(`⚙️ Sincronizada configuración del negocio principal para: ${req.businessId}`);
+    }
+
     await loadKnowledgeBase(req.businessId);
     
     res.json({ success: true, message: `Documento ${topic} actualizado con éxito.` });
