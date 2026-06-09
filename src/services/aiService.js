@@ -4,16 +4,28 @@
 
 const { GoogleGenerativeAI } = require('@google/generative-ai');
 const { getSystemPrompt } = require('../config/prompts');
-const { getPersonalityLevel } = require('../utils/knowledgeBase');
 
-// Inicializar Gemini
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+// Inicializar Gemini por defecto
+const defaultGenAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
-function createModel(modelName) {
-  const level = getPersonalityLevel();
-  const systemPrompt = getSystemPrompt(level);
+function createModel(modelName, businessId = 'balmoral') {
+  const { getPersonalityLevel, getBusinessConfig } = require('../utils/knowledgeBase');
+  const level = getPersonalityLevel(businessId);
+  const businessConfig = getBusinessConfig(businessId);
   
-  return genAI.getGenerativeModel({
+  // Si el negocio tiene su propia Gemini API key configurada, la usamos
+  let clientGenAI = defaultGenAI;
+  if (businessConfig.geminiApiKey) {
+    try {
+      clientGenAI = new GoogleGenerativeAI(businessConfig.geminiApiKey);
+    } catch (e) {
+      console.error(`❌ Error al instanciar Gemini con clave propia de ${businessId}:`, e.message);
+    }
+  }
+  
+  const systemPrompt = getSystemPrompt(level, businessConfig);
+  
+  return clientGenAI.getGenerativeModel({
     model: modelName,
     systemInstruction: systemPrompt,
     generationConfig: {
@@ -36,15 +48,18 @@ function createModel(modelName) {
  * @param {string} context — Contexto relevante de la base de conocimiento
  * @param {Array} history — Historial de la conversación
  * @param {Object} senderInfo — Información del remitente (numero y nombre)
+ * @param {string} businessId — ID del negocio inquilino
  * @returns {string} — Respuesta generada
  */
-async function generateAIResponse(userMessage, context, history = [], senderInfo = { numero: 'Desconocido', nombre: 'Cliente' }) {
+async function generateAIResponse(userMessage, context, history = [], senderInfo = { numero: 'Desconocido', nombre: 'Cliente' }, businessId = 'balmoral') {
+  const { getBusinessConfig } = require('../utils/knowledgeBase');
+  const businessConfig = getBusinessConfig(businessId);
   const MODELS_TO_TRY = ['gemini-3.5-flash', 'gemini-3.1-flash-lite', 'gemini-2.5-flash', 'gemini-2.0-flash'];
   let lastError;
 
   for (const modelName of MODELS_TO_TRY) {
     try {
-      console.log(`🤖 Intentando responder con modelo: ${modelName}`);
+      console.log(`🤖 [${businessId}] Intentando responder con modelo: ${modelName}`);
 
       // Construir el historial de conversación para Gemini
       const chatHistory = history.map(msg => ({
@@ -53,7 +68,7 @@ async function generateAIResponse(userMessage, context, history = [], senderInfo
       }));
 
       // Iniciar chat con historial dinámico
-      const chat = createModel(modelName).startChat({
+      const chat = createModel(modelName, businessId).startChat({
         history: chatHistory,
       });
 
@@ -70,7 +85,7 @@ async function generateAIResponse(userMessage, context, history = [], senderInfo
       
       const containsTag = response.includes('[DERIVAR_CONSULTA]');
       const mentionsDeriveInResponse = lowerResponse.includes('derivar') || lowerResponse.includes('derivación') || lowerResponse.includes('representante') || lowerResponse.includes('nos pondremos en contacto') || lowerResponse.includes('tomado nota');
-      const mentionsReservationInQuery = lowerQuery.includes('reservar') || lowerQuery.includes('reserva') || lowerQuery.includes('mesa para') || lowerQuery.includes('mesa para');
+      const mentionsReservationInQuery = lowerQuery.includes('reservar') || lowerQuery.includes('reserva') || lowerQuery.includes('mesa para');
       
       const isDeriving = containsTag || (mentionsDeriveInResponse && mentionsReservationInQuery);
 
@@ -90,14 +105,15 @@ async function generateAIResponse(userMessage, context, history = [], senderInfo
             }
           });
 
+          const recipientEmail = businessConfig.notificationEmail || process.env.EMAIL_USER;
           const mailOptions = {
-            from: `"Bot Balmoral" <${process.env.EMAIL_USER}>`,
-            to: process.env.EMAIL_USER, // Send to the restaurant owner
-            subject: '⚠️ Nueva Consulta de WhatsApp Derivada',
+            from: `"${businessConfig.name}" <${process.env.EMAIL_USER}>`,
+            to: recipientEmail, // Enviar al dueño del negocio
+            subject: `⚠️ Nueva Consulta de WhatsApp Derivada - ${businessConfig.name}`,
             text: `El bot derivó una consulta del cliente.\n\nNombre del Cliente: ${clienteNombre}\nNúmero de WhatsApp: ${clienteNumero}\nConsulta Realizada:\n"${clienteConsulta}"\n\nRespuesta del Bot:\n"${response.replace(/\[DERIVAR_CONSULTA\]/gi, '').trim()}"`,
             html: `
               <div style="font-family: Arial, sans-serif; padding: 20px; color: #333;">
-                <h2 style="color: #ef4444;">⚠️ Nueva Consulta Derivada</h2>
+                <h2 style="color: #ef4444;">⚠️ Nueva Consulta Derivada - ${businessConfig.name}</h2>
                 <p>El bot derivó una consulta para atención humana.</p>
                 <div style="background-color: #f3f4f6; padding: 15px; border-radius: 8px; margin: 15px 0;">
                   <p><strong>Nombre del Cliente:</strong> ${clienteNombre}</p>
@@ -113,7 +129,7 @@ async function generateAIResponse(userMessage, context, history = [], senderInfo
           };
 
           await transporter.sendMail(mailOptions);
-          console.log(`✉️ Correo de derivación enviado a ${process.env.EMAIL_USER} por el número: ${clienteNumero}`);
+          console.log(`✉️ Correo de derivación enviado a ${recipientEmail} para negocio ${businessId}`);
         } catch (err) {
            console.error('Error al enviar email via Nodemailer:', err);
         }
@@ -121,7 +137,7 @@ async function generateAIResponse(userMessage, context, history = [], senderInfo
         // 2. Enviar WhatsApp de derivación al número de ventas (UltraMSG)
         try {
           const { sendText } = require('./whatsappService');
-          let salesPhone = process.env.SALES_WHATSAPP || '5492233041076';
+          let salesPhone = businessConfig.salesPhone || '5492233041076';
           if (!salesPhone.endsWith('@c.us')) {
             salesPhone = `${salesPhone}@c.us`;
           }
@@ -134,8 +150,9 @@ async function generateAIResponse(userMessage, context, history = [], senderInfo
             `🤖 *Respuesta del Bot:* "${response.replace(/\[DERIVAR_CONSULTA\]/gi, '').trim()}"\n\n` +
             `👉 _Hacé clic en el enlace de WhatsApp para responderle directamente al cliente._`;
 
-          await sendText(salesPhone, notificationText);
-          console.log(`💬 WhatsApp de derivación enviado a ventas (${salesPhone}) por el cliente: ${clienteNumero}`);
+          // Enviamos a través del UltraMSG del propio negocio
+          await sendText(businessConfig, salesPhone, notificationText);
+          console.log(`💬 WhatsApp de derivación enviado a ventas (${salesPhone}) [${businessId}]`);
         } catch (err) {
           console.error('Error al enviar WhatsApp de derivación a ventas:', err.message);
         }
@@ -149,7 +166,7 @@ async function generateAIResponse(userMessage, context, history = [], senderInfo
 
     } catch (error) {
       lastError = error;
-      console.error(`❌ Error con modelo ${modelName}:`, error.message);
+      console.error(`❌ Error con modelo ${modelName} para ${businessId}:`, error.message);
       
       // Si es error de autenticación, no reintentar
       if (error.message.includes('API key') || error.message.includes('401')) {
@@ -161,27 +178,30 @@ async function generateAIResponse(userMessage, context, history = [], senderInfo
   }
 
   // FALLBACK: Si todos los modelos fallan, usar la respuesta de fallback local
-  console.error('❌ Todos los modelos de Gemini fallaron. Usando respuesta de fallback.');
-  return generateFallbackResponse(userMessage);
+  console.error(`❌ Todos los modelos de Gemini fallaron para ${businessId}. Usando respuesta de fallback.`);
+  return generateFallbackResponse(userMessage, businessId);
 }
 
 /**
  * Genera una respuesta de fallback usando la base de conocimiento directamente
  * Se usa cuando Gemini no está disponible (rate limit, error, etc.)
  */
-function generateFallbackResponse(userMessage) {
+function generateFallbackResponse(userMessage, businessId = 'balmoral') {
+  const { getBusinessConfig } = require('../utils/knowledgeBase');
+  const businessConfig = getBusinessConfig(businessId);
+  const name = businessConfig.name || 'Negocio';
+  
   const msg = userMessage.toLowerCase();
 
   // Saludo
   if (msg.match(/^(hola|buenas|buen dia|buenas noches|buenas tardes|hey|hi)/)) {
-    return '¡Buenas! 🍽️ Bienvenido al Restaurante Balmoral del Hotel Dos Reyes.\n\n' +
+    return `¡Buenas! 🍽️ Bienvenido a *${name}*.\n\n` +
       'Es un placer atenderle. ¿En qué puedo ayudarle?\n\n' +
       'Puede preguntarme sobre:\n' +
       '📋 Nuestra carta y menú\n' +
       '🕐 Horarios de atención\n' +
       '📍 Ubicación y cómo llegar\n' +
-      '📞 Reservas\n' +
-      '🎵 Eventos y música en vivo';
+      '📞 Reservas y turnos';
   }
 
   // Si preguntan por horarios
@@ -196,17 +216,72 @@ function generateFallbackResponse(userMessage) {
   // Si preguntan por el menú o la carta
   if (msg.includes('menu') || msg.includes('menú') || msg.includes('carta') || msg.includes('plato') || msg.includes('precio')) {
     return '📋 *Nuestra Carta*\n\n' +
-      'Para ver la carta completa con todos los precios, podés ver nuestro PDF aquí: https://drive.google.com/uc?export=download&id=1TmmIuRXzHFhAoG0zbxL4rZxhCY0uNQd8 ✨';
+      'Puede consultarnos sobre las opciones disponibles y le daremos toda la información de platos y precios. ¡Consúltenos! ✨';
   }
 
   // Respuesta genérica de error amable
-  return '¡Gracias por comunicarse con el Restaurante Balmoral! 🍽️\n\n' +
+  return `¡Gracias por comunicarse con *${name}*! 🍽️\n\n` +
     'En este momento mi sistema está experimentando una alta demanda y no puedo procesar su consulta correctamente. Por favor intente nuevamente en unos minutos.\n\n' +
     'Si necesita asistencia inmediata, contáctenos directamente:\n' +
-    '📞 (0223) 491-0383\n' +
-    '📞 (0223) 491-2916\n' +
-    '📧 balmoralrestaurante@gmail.com\n\n' +
+    `📞 ${businessConfig.salesPhone || '(0223) 491-0383'}\n\n` +
     '¡Disculpe las molestias! ✨';
+}
+
+/**
+ * Parsea un documento de menú (imagen o PDF) a formato JSON usando Gemini
+ * @param {string} fileBase64 
+ * @param {string} mimeType 
+ * @returns {Object} { items: [ { nombre, descripcion, precio, categoria } ] }
+ */
+async function parseMenuFromDocument(fileBase64, mimeType) {
+  try {
+    // Usamos el modelo flash por defecto
+    const model = defaultGenAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
+    const prompt = `Analizá esta imagen o PDF de un menú de restaurante y extraé todos los platos y bebidas que encuentres.
+Extraé de forma precisa:
+- nombre (el nombre del plato o bebida, ej: "Milanesa Napolitana")
+- descripcion (ingredientes, acompañamientos o detalles, si los hay)
+- precio (el precio del plato, extrayéndolo exactamente como aparezca, ej: "$4500" o "4500")
+- categoria (el grupo al que pertenece, ej: "Entradas", "Platos Principales", "Postres", "Bebidas", etc.)
+
+Respondé ÚNICAMENTE con un objeto JSON válido que cumpla con el siguiente formato, sin bloques de código markdown de tipo json ni explicaciones, solo el JSON puro:
+{
+  "items": [
+    {
+      "nombre": "Nombre del plato",
+      "descripcion": "Descripción del plato",
+      "precio": "$Precio",
+      "categoria": "Categoría"
+    }
+  ]
+}`;
+
+    const result = await model.generateContent([
+      {
+        inlineData: {
+          data: fileBase64,
+          mimeType: mimeType
+        }
+      },
+      prompt
+    ]);
+
+    let text = result.response.text();
+    // Limpiar posibles bloques de código markdown
+    text = text.replace(/```json/g, '').replace(/```/g, '').trim();
+    
+    // Si Gemini devolvió algo de texto antes/después del JSON, buscar los corchetes
+    const jsonStart = text.indexOf('{');
+    const jsonEnd = text.lastIndexOf('}');
+    if (jsonStart !== -1 && jsonEnd !== -1) {
+      text = text.substring(jsonStart, jsonEnd + 1);
+    }
+    
+    return JSON.parse(text);
+  } catch (error) {
+    console.error('❌ Error al parsear menú con Gemini:', error.message);
+    throw error;
+  }
 }
 
 /**
@@ -259,4 +334,4 @@ function cleanForWhatsApp(text) {
   return cleaned.trim();
 }
 
-module.exports = { generateAIResponse };
+module.exports = { generateAIResponse, parseMenuFromDocument };

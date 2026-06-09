@@ -3,26 +3,46 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Admin Panel - Balmoral AI</title>
+  <title>RESTalk - Cerebro del Negocio</title>
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css">
   <script type="module" src="https://unpkg.com/ionicons@7.1.0/dist/ionicons/ionicons.esm.js"></script>
   <script nomodule src="https://unpkg.com/ionicons@7.1.0/dist/ionicons/ionicons.js"></script>
 </head>
 <body>
+  <!-- Modal de carga (AI Menu Import) -->
+  <div id="loading-overlay" class="loading-overlay hidden">
+    <div class="loading-card glass">
+      <ion-icon name="sparkles-outline" class="loading-icon spin-sparkle"></ion-icon>
+      <h3>Procesando con Inteligencia Artificial</h3>
+      <p id="loading-overlay-text">Gemini está analizando la carta para extraer todos los platos y precios. Esto puede tomar unos segundos...</p>
+      <div class="progress-bar-container">
+        <div class="progress-bar-fill"></div>
+      </div>
+    </div>
+  </div>
+
   <div class="app-container">
     <aside class="sidebar glass">
       <div class="brand">
-        <ion-icon name="restaurant-outline"></ion-icon>
-        <h1>Balmoral AI</h1>
+        <ion-icon name="chatbubbles-outline"></ion-icon>
+        <div>
+          <h1 id="sidebar-business-name">RESTalk</h1>
+          <span class="badge-online">En Línea</span>
+        </div>
       </div>
       <nav class="nav-menu" id="nav-menu">
         <!-- Generado dinámicamente -->
         <div class="loading-menu">Cargando módulos...</div>
       </nav>
       <div class="user-info">
-        <ion-icon name="person-circle-outline"></ion-icon>
-        <span>Admin</span>
+        <div style="display: flex; align-items: center; gap: 0.5rem;">
+          <ion-icon name="person-circle-outline"></ion-icon>
+          <span id="user-display">Admin</span>
+        </div>
+        <button class="btn-logout" id="btn-logout" title="Cerrar Sesión">
+          <ion-icon name="log-out-outline"></ion-icon>
+        </button>
       </div>
     </aside>
 
@@ -30,7 +50,7 @@
       <header class="topbar glass">
         <div>
           <h2 id="current-title">Panel de Administración</h2>
-          <p class="subtitle">Gestiona el conocimiento del agente de Inteligencia Artificial.</p>
+          <p class="subtitle">Gestiona el conocimiento y configuración del agente de Inteligencia Artificial.</p>
         </div>
         <button class="btn btn-primary" id="btn-save" disabled>
           <ion-icon name="save-outline"></ion-icon> Guardar Cambios
@@ -38,20 +58,183 @@
       </header>
 
       <div class="editor-container glass">
+        
+        <!-- BIENVENIDA -->
         <div id="welcome-message" class="welcome-state">
           <ion-icon name="hardware-chip-outline" class="big-icon"></ion-icon>
-          <h3>Bienvenido al Cerebro de Balmoral</h3>
+          <h3>Bienvenido al Cerebro de tu Negocio</h3>
           <p>Selecciona un módulo en el panel izquierdo para editar el conocimiento del agente. Todos los cambios se reflejarán instantáneamente en WhatsApp.</p>
         </div>
-        
-        <div id="editor-state" class="editor-state hidden">
-          <div class="editor-header">
-            <span class="badge">Formato JSON</span>
-            <span id="status-msg" class="status-msg"></span>
+
+        <!-- FORMULARIO: INFORMACIÓN GENERAL -->
+        <div id="section-restaurant" class="form-section hidden">
+          <div class="section-card">
+            <h3>Información del Negocio</h3>
+            <p class="section-desc">Datos básicos e institucionales para que el bot responda consultas de contacto.</p>
+            <div class="form-grid">
+              <div class="form-group-full">
+                <label>Nombre del Restaurante / Empresa</label>
+                <input type="text" id="info-nombre" class="form-control-input" placeholder="Ej: Restaurante Balmoral">
+              </div>
+              <div class="form-group">
+                <label>Dirección</label>
+                <input type="text" id="info-direccion" class="form-control-input" placeholder="Ej: Av. Colón 2129, Mar del Plata">
+              </div>
+              <div class="form-group">
+                <label>Enlace de Google Maps</label>
+                <input type="url" id="info-maps" class="form-control-input" placeholder="https://maps.app.goo.gl/...">
+              </div>
+              <div class="form-group">
+                <label>Contraseña de Wi-Fi</label>
+                <input type="text" id="info-wifi" class="form-control-input" placeholder="Ej: DosReyes2026">
+              </div>
+              <div class="form-group">
+                <label>Teléfonos de Reserva / Contacto</label>
+                <input type="text" id="info-contacto" class="form-control-input" placeholder="Ej: (0223) 491-0383">
+              </div>
+            </div>
           </div>
-          <textarea id="json-editor" spellcheck="false"></textarea>
         </div>
-        
+
+        <!-- FORMULARIO: MENÚ / CARTA -->
+        <div id="section-menu" class="form-section hidden">
+          <div class="section-card">
+            <div class="menu-section-header">
+              <div>
+                <h3>Carta y Menú</h3>
+                <p class="section-desc">Cargá tus platos para que la IA los recomiende. Completá los campos o importá la carta completa.</p>
+              </div>
+              <div>
+                <input type="file" id="menu-pdf-picker" class="hidden" accept="application/pdf, image/jpeg, image/png">
+                <button class="btn btn-ai" id="btn-import-menu">
+                  <ion-icon name="sparkles-outline"></ion-icon> Importar Carta por IA
+                </button>
+              </div>
+            </div>
+
+            <!-- Filtros de categoría -->
+            <div class="category-tabs" id="category-tabs">
+              <!-- Generados dinámicamente -->
+            </div>
+
+            <div class="menu-list" id="menu-items-list">
+              <!-- Lista de platos dinámica -->
+            </div>
+
+            <button class="btn btn-secondary btn-add-item" id="btn-add-dish">
+              <ion-icon name="add-circle-outline"></ion-icon> Agregar Nuevo Plato
+            </button>
+          </div>
+        </div>
+
+        <!-- FORMULARIO: HORARIOS -->
+        <div id="section-horarios" class="form-section hidden">
+          <div class="section-card">
+            <h3>Horarios de Atención</h3>
+            <p class="section-desc">Configurá los horarios de apertura. Los días desmarcados se responderán como CERRADO.</p>
+            <div class="horarios-table" id="horarios-table">
+              <!-- Filas por día de la semana dinámicas -->
+            </div>
+          </div>
+        </div>
+
+        <!-- FORMULARIO: PREGUNTAS FRECUENTES -->
+        <div id="section-faq" class="form-section hidden">
+          <div class="section-card">
+            <h3>Preguntas Frecuentes (FAQs)</h3>
+            <p class="section-desc">Preguntas típicas y sus respuestas correspondientes (Wi-Fi, estacionamiento, reservas, etc.).</p>
+            <div class="faq-list" id="faq-list">
+              <!-- Lista de FAQs dinámicas -->
+            </div>
+            <button class="btn btn-secondary btn-add-item" id="btn-add-faq">
+              <ion-icon name="add-circle-outline"></ion-icon> Agregar Pregunta Frecuente
+            </button>
+          </div>
+        </div>
+
+        <!-- FORMULARIO: IMÁGENES Y MULTIMEDIA -->
+        <div id="section-media" class="form-section hidden">
+          <div class="section-card">
+            <h3>Archivos y Enlaces Multimedia</h3>
+            <p class="section-desc">Subí archivos PDF o fotos de platos clave para que la IA los envíe como imágenes en WhatsApp.</p>
+            
+            <div class="media-row">
+              <div class="media-details">
+                <strong>Carta en PDF</strong>
+                <span>Enlace a la versión descargable de tu carta.</span>
+              </div>
+              <div class="media-inputs">
+                <input type="text" id="media-carta-pdf" class="form-control-input" placeholder="https://...">
+                <input type="file" id="file-picker-carta" class="hidden" accept="application/pdf">
+                <button class="btn btn-secondary btn-icon" onclick="triggerFileUpload('file-picker-carta', 'media-carta-pdf')">
+                  <ion-icon name="cloud-upload-outline"></ion-icon> Subir PDF
+                </button>
+              </div>
+            </div>
+
+            <div class="media-row">
+              <div class="media-details">
+                <strong>Foto del Salón</strong>
+                <span>Foto del interior del salón del restaurante.</span>
+              </div>
+              <div class="media-inputs">
+                <input type="text" id="media-salon" class="form-control-input" placeholder="https://...">
+                <input type="file" id="file-picker-salon" class="hidden" accept="image/jpeg, image/png">
+                <button class="btn btn-secondary btn-icon" onclick="triggerFileUpload('file-picker-salon', 'media-salon')">
+                  <ion-icon name="image-outline"></ion-icon> Subir Foto
+                </button>
+              </div>
+            </div>
+
+            <div class="media-row">
+              <div class="media-details">
+                <strong>Foto de la Fachada</strong>
+                <span>Foto exterior de la fachada o entrada del local.</span>
+              </div>
+              <div class="media-inputs">
+                <input type="text" id="media-fachada" class="form-control-input" placeholder="https://...">
+                <input type="file" id="file-picker-fachada" class="hidden" accept="image/jpeg, image/png">
+                <button class="btn btn-secondary btn-icon" onclick="triggerFileUpload('file-picker-fachada', 'media-fachada')">
+                  <ion-icon name="image-outline"></ion-icon> Subir Foto
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- FORMULARIO: CONFIGURACIÓN DE CONEXIÓN -->
+        <div id="section-eventos" class="form-section hidden">
+          <!-- Nota: Usamos 'eventos' en el menú de Firestore por consistencia de base de datos actual, pero lo mostramos como 'Conexión' si el cliente quiere configurar settings -->
+          <div class="section-card">
+            <h3>Conexión y Notificaciones</h3>
+            <p class="section-desc">Configuración técnica de tu canal de UltraMSG y dónde se reciben las derivaciones.</p>
+            <div class="form-grid">
+              <div class="form-group">
+                <label>UltraMSG Token</label>
+                <input type="text" id="config-token" class="form-control-input" placeholder="Token de UltraMSG">
+              </div>
+              <div class="form-group">
+                <label>UltraMSG Instance ID</label>
+                <input type="text" id="config-instance" class="form-control-input" placeholder="Ej: instance12345">
+              </div>
+              <div class="form-group">
+                <label>WhatsApp de Ventas / Recepción (Notificaciones)</label>
+                <input type="text" id="config-phone" class="form-control-input" placeholder="Ej: 5492233041076">
+                <small style="color: var(--text-muted); display: block; margin-top: 0.25rem;">Número internacional sin espacios ni guiones.</small>
+              </div>
+              <div class="form-group">
+                <label>Correo de Notificaciones (Alertas de Reservas)</label>
+                <input type="email" id="config-email" class="form-control-input" placeholder="Ej: ventas@tunegocio.com">
+              </div>
+              <div class="form-group-full">
+                <label>Instrucciones especiales para la IA (Opcional)</label>
+                <textarea id="config-prompt" class="form-control-textarea" rows="4" placeholder="Ej: 'Recomendá siempre el budín de limón como postre casero. No hacemos envíos a domicilio.'"></textarea>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- PERSONALIDAD -->
         <div id="slider-state" class="editor-state hidden">
           <div class="editor-header">
             <span class="badge">Nivel de Emocionalidad</span>
@@ -69,6 +252,7 @@
             </div>
           </div>
         </div>
+
       </div>
     </main>
   </div>

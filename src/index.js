@@ -25,26 +25,13 @@ loadKnowledgeBase().then(() => {
   console.log('✅ Base de conocimiento inicializada correctamente');
 });
 
-// Autenticación para el panel Admin
-const authMiddleware = basicAuth({
-  users: { [process.env.ADMIN_USER || 'admin']: process.env.ADMIN_PASS || 'Balmoral2026' },
-  challenge: true,
-  realm: 'Restaurante Balmoral Admin'
-});
+// Panel Admin Frontend y Backend (Acceso libre a estáticos, seguridad en las APIs)
+app.use('/admin', express.static(path.join(__dirname, '..', 'public', 'admin')));
+app.use('/api', adminRoutes);
 
-// Panel Admin Frontend y Backend
-app.use('/admin', authMiddleware, express.static(path.join(__dirname, '..', 'public', 'admin')));
-app.use('/api', authMiddleware, adminRoutes);
-
-// Health check endpoint
+// Servir la página de inicio de sesión de RESTalk en la raíz
 app.get('/', (req, res) => {
-  res.json({
-    status: '✅ Chatbot Balmoral activo',
-    restaurant: 'Restaurante Balmoral — Hotel Dos Reyes',
-    location: 'Av. Colón 2129, Mar del Plata',
-    uptime: process.uptime(),
-    timestamp: new Date().toISOString()
-  });
+  res.sendFile(path.join(__dirname, '..', 'public', 'login.html'));
 });
 
 app.get('/health', (req, res) => res.status(200).send('OK'));
@@ -52,11 +39,12 @@ app.get('/health', (req, res) => res.status(200).send('OK'));
 // =============================================
 // Webhook principal — Recibe mensajes de UltraMSG
 // =============================================
-app.post('/webhook', async (req, res) => {
+app.post('/webhook/:businessId?', async (req, res) => {
   try {
     // Responder inmediatamente a UltraMSG (evitar timeout)
     res.status(200).send('OK');
 
+    const businessId = req.params.businessId || 'balmoral';
     const data = req.body;
     if (!data || !data.data) return;
 
@@ -67,13 +55,14 @@ app.post('/webhook', async (req, res) => {
     if (messageData.isGroup === true) return;
 
     log('📩 Mensaje recibido', {
+      businessId,
       from: messageData.from,
       body: messageData.body,
       type: messageData.type
     });
 
-    // Procesar el mensaje
-    await handleIncomingMessage(messageData);
+    // Procesar el mensaje para el negocio específico
+    await handleIncomingMessage(messageData, businessId);
 
   } catch (error) {
     console.error('❌ Error en webhook:', error.message);
@@ -85,8 +74,7 @@ app.post('/webhook', async (req, res) => {
 app.listen(PORT, () => {
   console.log('');
   console.log('🍽️  ═══════════════════════════════════════════════');
-  console.log('    Chatbot Restaurante Balmoral');
-  console.log('    Hotel Dos Reyes — Mar del Plata');
+  console.log('    Plataforma RESTalk — Chatbots WhatsApp SaaS');
   console.log('    ─────────────────────────────────────────────');
   console.log(`    🌐 Servidor:  http://localhost:${PORT}`);
   console.log(`    📡 Webhook:   http://localhost:${PORT}/webhook`);

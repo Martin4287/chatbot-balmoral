@@ -1,97 +1,122 @@
 // ============================================
-// Servicio de WhatsApp — UltraMSG API
+// Servicio de WhatsApp — UltraMSG API (Multi-Inquilino)
 // ============================================
 
 const ultramsg = require('ultramsg-whatsapp-api');
 
-// Inicializar cliente de UltraMSG
-const instanceId = process.env.ULTRAMSG_INSTANCE_ID;
-const token = process.env.ULTRAMSG_TOKEN;
-const api = new ultramsg(instanceId, token);
+// Caché de clientes instanciados para cada negocio
+const clients = {};
+
+/**
+ * Obtiene o crea la instancia de UltraMSG correspondiente al negocio
+ * @param {Object} businessConfig 
+ * @returns {Object} Instancia de UltraMSG
+ */
+function getApiClient(businessConfig) {
+  const { businessId, ultramsgInstance, ultramsgToken } = businessConfig;
+  
+  if (!ultramsgInstance || !ultramsgToken) {
+    throw new Error(`UltraMSG no configurado para el negocio: ${businessId || 'desconocido'}`);
+  }
+
+  const cacheKey = `${businessId}:${ultramsgInstance}`;
+  if (!clients[cacheKey]) {
+    clients[cacheKey] = new ultramsg(ultramsgInstance, ultramsgToken);
+    console.log(`🔌 Cliente UltraMSG instanciado y conectado para el negocio: ${businessId}`);
+  }
+  return clients[cacheKey];
+}
 
 /**
  * Envía un mensaje de texto por WhatsApp
+ * @param {Object} businessConfig — Configuración del negocio remitente
  * @param {string} to — Número del destinatario (formato: "5492235446970@c.us")
  * @param {string} body — Texto del mensaje
  */
-async function sendText(to, body) {
+async function sendText(businessConfig, to, body) {
   try {
+    const api = getApiClient(businessConfig);
     const response = await api.sendChatMessage(to, body);
     
     if (response.error) {
-      console.error('❌ Error UltraMSG (texto):', response.error);
+      console.error(`❌ Error UltraMSG texto [${businessConfig.businessId}]:`, response.error);
     }
     
     return response;
   } catch (error) {
-    console.error('❌ Error enviando texto:', error.message);
+    console.error(`❌ Error enviando texto [${businessConfig.businessId || 'desconocido'}]:`, error.message);
     throw error;
   }
 }
 
 /**
  * Envía una imagen por WhatsApp
+ * @param {Object} businessConfig — Configuración del negocio
  * @param {string} to — Número del destinatario
  * @param {string} imageUrl — URL pública de la imagen
  * @param {string} caption — Texto descriptivo (opcional)
  */
-async function sendImage(to, imageUrl, caption = '') {
+async function sendImage(businessConfig, to, imageUrl, caption = '') {
   try {
+    const api = getApiClient(businessConfig);
     const response = await api.sendImageMessage(to, imageUrl, caption);
     
     if (response.error) {
-      console.error('❌ Error UltraMSG (imagen):', response.error);
+      console.error(`❌ Error UltraMSG imagen [${businessConfig.businessId}]:`, response.error);
     }
     
     return response;
   } catch (error) {
-    console.error('❌ Error enviando imagen:', error.message);
+    console.error(`❌ Error enviando imagen [${businessConfig.businessId || 'desconocido'}]:`, error.message);
     throw error;
   }
 }
 
 /**
  * Envía un documento (PDF, etc.) por WhatsApp
+ * @param {Object} businessConfig — Configuración del negocio
  * @param {string} to — Número del destinatario
  * @param {string} docUrl — URL pública del documento
  * @param {string} filename — Nombre del archivo
  * @param {string} caption — Texto descriptivo (opcional)
  */
-async function sendDocument(to, docUrl, filename = 'documento.pdf', caption = '') {
+async function sendDocument(businessConfig, to, docUrl, filename = 'documento.pdf', caption = '') {
   try {
+    const api = getApiClient(businessConfig);
     const response = await api.sendDocumentMessage(to, docUrl, filename, caption);
     
     if (response.error) {
-      console.error('❌ Error UltraMSG (documento):', response.error);
+      console.error(`❌ Error UltraMSG documento [${businessConfig.businessId}]:`, response.error);
     }
     
     return response;
   } catch (error) {
-    console.error('❌ Error enviando documento:', error.message);
+    console.error(`❌ Error enviando documento [${businessConfig.businessId || 'desconocido'}]:`, error.message);
     throw error;
   }
 }
 
 /**
  * Envía una ubicación por WhatsApp
+ * @param {Object} businessConfig — Configuración del negocio
  * @param {string} to — Número del destinatario
+ * @param {string} lat — Latitud
+ * @param {string} lng — Longitud
+ * @param {string} address — Dirección descriptiva
  */
-async function sendLocation(to) {
+async function sendLocation(businessConfig, to, lat = '-38.0023', lng = '-57.5375', address = '') {
   try {
-    // Coordenadas del Hotel Dos Reyes, Mar del Plata
-    const lat = '-38.0023';
-    const lng = '-57.5375';
-    const address = 'Restaurante Balmoral - Hotel Dos Reyes\nAv. Colón 2129, Mar del Plata';
-    
-    const response = await api.sendLocationMessage(to, lat, lng, address);
+    const api = getApiClient(businessConfig);
+    const finalAddress = address || `${businessConfig.name}`;
+    const response = await api.sendLocationMessage(to, lat, lng, finalAddress);
     
     if (response.error) {
-      console.error('❌ Error UltraMSG (ubicación):', response.error);
+      console.error(`❌ Error UltraMSG ubicación [${businessConfig.businessId}]:`, response.error);
     }
     
     return response;
   } catch (error) {
-    console.error('❌ Error enviando ubicación:', error.message);
+    console.error(`❌ Error enviando ubicación [${businessConfig.businessId || 'desconocido'}]:`, error.message);
     throw error;
   }
 }

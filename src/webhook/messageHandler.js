@@ -1,56 +1,60 @@
 // ============================================
-// Handler de mensajes entrantes del webhook
+// Handler de mensajes entrantes del webhook (Multi-Inquilino)
 // ============================================
 
 const { generateAIResponse } = require('../services/aiService');
 const { sendText, sendImage, sendDocument } = require('../services/whatsappService');
-const { getRelevantContext, getMediaForTopic } = require('../utils/knowledgeBase');
+const { getRelevantContext, getMediaForTopic, getBusinessConfig } = require('../utils/knowledgeBase');
 const { log } = require('../utils/logger');
 
-// Almacén simple de historial de conversación (en memoria)
-// En producción, podrías usar Redis o una base de datos
+// Almacén de historial de conversación (en memoria)
+// Indexado por la combinación "businessId:sender" para aislar historiales por negocio
 const conversationHistory = new Map();
 const MAX_HISTORY = 10; // Máximo de mensajes por conversación
 
 /**
  * Procesa un mensaje entrante de WhatsApp
  * @param {Object} messageData — Datos del mensaje del webhook de UltraMSG
+ * @param {string} businessId — ID del negocio
  */
-async function handleIncomingMessage(messageData) {
+async function handleIncomingMessage(messageData, businessId = 'balmoral') {
   const sender = messageData.from;       // Número del remitente (ej: "5492235446970@c.us")
   const messageBody = (messageData.body || '').trim();
   const messageType = messageData.type;  // text, image, document, etc.
+  
+  // Cargar configuración de negocio
+  const businessConfig = getBusinessConfig(businessId);
+  const historyKey = `${businessId}:${sender}`;
 
-  // Manejar específicamente audios (UltraMSG usa 'ptt' o 'audio')
+  // Manejar específicamente audios
   if (messageType === 'ptt' || messageType === 'audio') {
-    await sendText(sender, '¡Hola! 🍽️ Disculpas, pero por el momento no puedo escuchar mensajes de audio.\n\nPor favor, escribime tu consulta en texto y con gusto te ayudo. ✨');
+    await sendText(businessConfig, sender, `¡Hola! ✨ Disculpas, pero por el momento no puedo escuchar mensajes de audio.\n\nPor favor, escribime tu consulta en texto y con gusto te ayudo. 🍽️`);
     return;
   }
 
-  // Si el mensaje está vacío (ej: sticker, imagen sin texto), responder genéricamente
+  // Si el mensaje está vacío, responder con la guía de ayuda inicial
   if (!messageBody) {
-    await sendText(sender, 
-      '¡Buenas! 🍽️ Soy el asistente virtual del Restaurante Balmoral.\n\n' +
+    await sendText(businessConfig, sender, 
+      `¡Buenas! ✨ Soy el asistente virtual de *${businessConfig.name}*.\n\n` +
       'Por favor, escribime tu consulta en texto y con gusto te ayudo.\n\n' +
       'Podés preguntarme sobre:\n' +
       '📋 Nuestra carta y menú\n' +
       '🕐 Horarios de atención\n' +
       '📍 Ubicación y cómo llegar\n' +
-      '📞 Reservas\n' +
-      '🎵 Eventos y música en vivo'
+      '📞 Reservas y turnos'
     );
     return;
   }
 
   try {
-    // Obtener historial de la conversación
-    const history = getConversationHistory(sender);
+    // Obtener historial aislado de la conversación
+    const history = getConversationHistory(historyKey);
 
-    // Obtener contexto relevante de la base de conocimiento
-    const context = getRelevantContext(messageBody);
+    // Obtener contexto relevante de la base de conocimiento de este negocio
+    const context = getRelevantContext(messageBody, businessId);
 
-    // Verificar si el usuario pide fotos, carta, menú, documento
-    const mediaRequest = getMediaForTopic(messageBody);
+    // Verificar si solicita algún recurso multimedia (foto general o de plato)
+    const mediaRequest = getMediaForTopic(messageBody, businessId);
 
     // Obtener información del remitente
     const senderNumber = sender.replace('@c.us', '');
@@ -58,32 +62,31 @@ async function handleIncomingMessage(messageData) {
     const senderInfo = { numero: senderNumber, nombre: pushName };
 
     // Generar respuesta con IA
-    const aiResponse = await generateAIResponse(messageBody, context, history, senderInfo);
+    const aiResponse = await generateAIResponse(messageBody, context, history, senderInfo, businessId);
 
     // Guardar en historial
-    addToHistory(sender, 'user', messageBody);
-    addToHistory(sender, 'assistant', aiResponse);
+    addToHistory(historyKey, 'user', messageBody);
+    addToHistory(historyKey, 'assistant', aiResponse);
 
     // Enviar respuesta de texto
-    await sendText(sender, aiResponse);
+    await sendText(businessConfig, sender, aiResponse);
 
-    // Si se detectó que debe enviar media (foto, documento), enviarlo después del texto
+    // Si el usuario pide fotos y existe media coincidente, enviarla como imagen de WhatsApp
     if (mediaRequest) {
-      await handleMediaResponse(sender, mediaRequest);
+      await handleMediaResponse(businessConfig, sender, mediaRequest);
     }
 
-    log('✅ Respuesta enviada', { to: sender, response: aiResponse.substring(0, 100) });
+    log('✅ Respuesta enviada', { businessId, to: sender, response: aiResponse.substring(0, 100) });
 
   } catch (error) {
-    console.error('❌ Error procesando mensaje:', error.message);
-    log('❌ Error procesando mensaje', { error: error.message, sender });
+    console.error(`❌ Error procesando mensaje en negocio ${businessId}:`, error.message);
+    log('❌ Error procesando mensaje', { businessId, error: error.message, sender });
 
-    // Enviar mensaje de fallback amable
-    await sendText(sender,
+    // Enviar mensaje de fallback amable del negocio
+    await sendText(businessConfig, sender,
       'Disculpe, tuve un inconveniente al procesar su consulta. 🙏\n\n' +
       'Le sugiero contactarnos directamente:\n' +
-      '📞 (0223) 491-0383\n' +
-      '📞 (0223) 491-2916\n\n' +
+      `📞 ${businessConfig.salesPhone || 'nuestros teléfonos'}\n\n` +
       'Nuestro equipo estará encantado de asistirle.'
     );
   }
@@ -92,37 +95,37 @@ async function handleIncomingMessage(messageData) {
 /**
  * Maneja el envío de contenido multimedia (fotos, documentos)
  */
-async function handleMediaResponse(sender, media) {
+async function handleMediaResponse(businessConfig, sender, media) {
   try {
     if (media.type === 'image') {
-      await sendImage(sender, media.url, media.caption || '');
+      await sendImage(businessConfig, sender, media.url, media.caption || '');
     } else if (media.type === 'document') {
-      await sendDocument(sender, media.url, media.filename || 'documento.pdf', media.caption || '');
+      await sendDocument(businessConfig, sender, media.url, media.filename || 'documento.pdf', media.caption || '');
     }
   } catch (error) {
-    console.error('❌ Error enviando media:', error.message);
+    console.error(`❌ Error enviando media [${businessConfig.businessId}]:`, error.message);
   }
 }
 
 /**
- * Obtiene el historial de conversación de un remitente
+ * Obtiene el historial de conversación de una clave
  */
-function getConversationHistory(sender) {
-  return conversationHistory.get(sender) || [];
+function getConversationHistory(historyKey) {
+  return conversationHistory.get(historyKey) || [];
 }
 
 /**
  * Agrega un mensaje al historial de conversación
  */
-function addToHistory(sender, role, content) {
-  if (!conversationHistory.has(sender)) {
-    conversationHistory.set(sender, []);
+function addToHistory(historyKey, role, content) {
+  if (!conversationHistory.has(historyKey)) {
+    conversationHistory.set(historyKey, []);
   }
 
-  const history = conversationHistory.get(sender);
+  const history = conversationHistory.get(historyKey);
   history.push({ role, content, timestamp: Date.now() });
 
-  // Mantener solo los últimos N mensajes
+  // Mantener solo los últimos N mensajes (usuario + bot)
   if (history.length > MAX_HISTORY * 2) {
     history.splice(0, history.length - MAX_HISTORY * 2);
   }
@@ -138,11 +141,11 @@ function cleanOldConversations() {
   const TWO_HOURS = 2 * 60 * 60 * 1000;
   const now = Date.now();
 
-  for (const [sender, history] of conversationHistory.entries()) {
+  for (const [key, history] of conversationHistory.entries()) {
     if (history.length > 0) {
       const lastMessage = history[history.length - 1];
       if (now - lastMessage.timestamp > TWO_HOURS) {
-        conversationHistory.delete(sender);
+        conversationHistory.delete(key);
       }
     }
   }
