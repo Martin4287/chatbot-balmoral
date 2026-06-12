@@ -43,7 +43,12 @@ async function sendWaapiMessage(businessConfig, endpoint, payload) {
     // Autodetectar restricción de trial de WaAPI y auto-corregir reintentando con el número de prueba
     if (data.status === 'error' && data.message && data.message.includes('trial phone number')) {
       const match = data.message.match(/actions to ([^!]+)!/);
-      const authorizedNumber = match ? match[1] : '5492233041076@c.us';
+      let authorizedNumber = match ? match[1].trim() : '5492233041076';
+      
+      // Asegurar que el número tenga el sufijo @c.us
+      if (!authorizedNumber.includes('@')) {
+        authorizedNumber = `${authorizedNumber}@c.us`;
+      }
       
       log('⚠️ WaAPI Trial detectado. Reintentando con el número autorizado.', { originalChatId: payload.chatId, authorizedNumber });
       console.log(`⚠️ WaAPI Trial detectado. Reintentando con el número autorizado: ${authorizedNumber}`);
@@ -60,6 +65,28 @@ async function sendWaapiMessage(businessConfig, endpoint, payload) {
         body: JSON.stringify(payload)
       });
       data = await response.json();
+    }
+
+    // Si el chatId es un LID (@lid) y sigue fallando, intentar convertirlo a @c.us
+    if ((data.status === 'error' || data.success === false) && payload.chatId && payload.chatId.includes('@lid')) {
+      // Extraer solo los dígitos del LID y probar en formato @c.us
+      const lidDigits = String(payload.chatId).replace('@lid', '').replace(/[^0-9]/g, '');
+      if (lidDigits.length > 5) {
+        const fallbackChatId = `${lidDigits}@c.us`;
+        console.log(`⚠️ ChatId era LID, reintentando con formato @c.us: ${fallbackChatId}`);
+        log('⚠️ LID fallback a @c.us', { original: payload.chatId, fallback: fallbackChatId });
+        payload.chatId = fallbackChatId;
+        response = await fetch(url, {
+          method: 'POST',
+          headers: {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${ultramsgToken}`
+          },
+          body: JSON.stringify(payload)
+        });
+        data = await response.json();
+      }
     }
 
     if (!response.ok || data.status === 'error' || data.success === false) {

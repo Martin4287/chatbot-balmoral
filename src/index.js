@@ -89,14 +89,24 @@ app.post('/webhook/:businessId?', async (req, res) => {
     const isWaapi = (data.event !== undefined || data.instanceId !== undefined) && data.data && data.data.message;
     
     if (isWaapi) {
+      // WaAPI dispara 'message' y 'message_create' para cada mensaje.
+      // Solo procesamos 'message' para evitar respuestas duplicadas.
+      if (data.event !== 'message') return;
+      
       const waapiMsg = data.data.message;
+      
+      // WaAPI a veces envía el remitente en formato LID (@lid) en lugar de @c.us.
+      // Usamos el campo 'from' del mensaje. Si es un LID, lo usamos tal cual
+      // porque WaAPI puede rutear por LID. Para el chatId de respuesta usamos 'from'.
+      const rawFrom = waapiMsg.from || (waapiMsg.id ? waapiMsg.id.remote : '');
+      
       messageData = {
         fromMe: waapiMsg.id ? Boolean(waapiMsg.id.fromMe) : false,
-        from: waapiMsg.from || (waapiMsg.id ? waapiMsg.id.remote : ''),
+        from: rawFrom,
         body: waapiMsg.body || '',
         type: waapiMsg.type || 'chat',
         isGroup: waapiMsg.isGroup || false,
-        pushname: waapiMsg.pushName || waapiMsg.pushname || 'Cliente'
+        pushname: waapiMsg.notifyName || waapiMsg.pushName || waapiMsg.pushname || 'Cliente'
       };
     } else if (data.data) {
       // Formato UltraMSG: el payload llega directamente en data.data
