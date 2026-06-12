@@ -27,7 +27,7 @@ async function sendWaapiMessage(businessConfig, endpoint, payload) {
   const url = `https://waapi.app/api/v1/instances/${ultramsgInstance}/client/action/${endpoint}`;
   
   try {
-    const response = await fetch(url, {
+    let response = await fetch(url, {
       method: 'POST',
       headers: {
         'Accept': 'application/json',
@@ -38,7 +38,30 @@ async function sendWaapiMessage(businessConfig, endpoint, payload) {
     });
     
     const { log } = require('../utils/logger');
-    const data = await response.json();
+    let data = await response.json();
+    
+    // Autodetectar restricción de trial de WaAPI y auto-corregir reintentando con el número de prueba
+    if (data.status === 'error' && data.message && data.message.includes('trial phone number')) {
+      const match = data.message.match(/actions to ([^!]+)!/);
+      const authorizedNumber = match ? match[1] : '5492233041076@c.us';
+      
+      log('⚠️ WaAPI Trial detectado. Reintentando con el número autorizado.', { originalChatId: payload.chatId, authorizedNumber });
+      console.log(`⚠️ WaAPI Trial detectado. Reintentando con el número autorizado: ${authorizedNumber}`);
+      
+      payload.chatId = authorizedNumber;
+      
+      response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${ultramsgToken}`
+        },
+        body: JSON.stringify(payload)
+      });
+      data = await response.json();
+    }
+
     if (!response.ok || data.status === 'error' || data.success === false) {
       log('❌ Error en WaAPI', { endpoint, response: data, payload });
       console.error(`❌ Error en WaAPI (${endpoint}) para ${businessConfig.businessId}:`, data);
