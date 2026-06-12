@@ -51,8 +51,8 @@ app.post('/webhook/:businessId?', async (req, res) => {
 
     let messageData = null;
 
-    // Detectar si el webhook es de WaAPI
-    if (data.event && (data.event === 'message' || data.event === 'message:created' || data.event === 'crear_mensaje') && data.data && data.data.message) {
+    // Detectar si el webhook es de WaAPI (contiene data.message)
+    if (data.data && data.data.message) {
       const waapiMsg = data.data.message;
       messageData = {
         fromMe: waapiMsg.id ? waapiMsg.id.fromMe : false,
