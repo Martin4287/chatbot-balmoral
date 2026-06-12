@@ -37,14 +37,19 @@ async function sendWaapiMessage(businessConfig, endpoint, payload) {
       body: JSON.stringify(payload)
     });
     
+    const { log } = require('../utils/logger');
     const data = await response.json();
-    if (!response.ok || data.status === 'error') {
+    if (!response.ok || data.status === 'error' || data.success === false) {
+      log('❌ Error en WaAPI', { endpoint, response: data, payload });
       console.error(`❌ Error en WaAPI (${endpoint}) para ${businessConfig.businessId}:`, data);
-      return { error: data.message || 'Error en WaAPI' };
+      throw new Error(data.message || 'Error en WaAPI');
     }
+    log('ℹ️ Respuesta WaAPI exitosa', { endpoint, response: data });
     return data;
   } catch (error) {
     console.error(`❌ Error de red/petición en WaAPI (${endpoint}):`, error.message);
+    const { log } = require('../utils/logger');
+    log('❌ Error de red WaAPI', { endpoint, error: error.message, payload });
     throw error;
   }
 }
