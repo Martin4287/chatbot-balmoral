@@ -42,14 +42,32 @@ app.get('/health', (req, res) => res.status(200).send('OK'));
 // =============================================
 app.post('/webhook/:businessId?', async (req, res) => {
   try {
-    // Responder inmediatamente a UltraMSG (evitar timeout)
+    // Responder inmediatamente para evitar timeout
     res.status(200).send('OK');
 
     const businessId = req.params.businessId || 'balmoral';
     const data = req.body;
-    if (!data || !data.data) return;
+    if (!data) return;
 
-    const messageData = data.data;
+    let messageData = null;
+
+    // Detectar si el webhook es de WaAPI
+    if (data.event && (data.event === 'message' || data.event === 'message:created' || data.event === 'crear_mensaje') && data.data && data.data.message) {
+      const waapiMsg = data.data.message;
+      messageData = {
+        fromMe: waapiMsg.id ? waapiMsg.id.fromMe : false,
+        from: waapiMsg.from || (waapiMsg.id ? waapiMsg.id.remote : ''),
+        body: waapiMsg.body || '',
+        type: waapiMsg.type || 'chat',
+        isGroup: waapiMsg.isGroup || false,
+        pushname: waapiMsg.pushName || waapiMsg.pushname || 'Cliente'
+      };
+    } else if (data.data) {
+      // Formato UltraMSG
+      messageData = data.data;
+    }
+
+    if (!messageData) return;
 
     // Ignorar mensajes propios o de grupos
     const isFromMe = messageData.fromMe === true || messageData.fromMe === 1 || messageData.fromMe === '1' || String(messageData.fromMe).toLowerCase() === 'true' || messageData.from === 'me';

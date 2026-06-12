@@ -1,11 +1,53 @@
 // ============================================
-// Servicio de WhatsApp — UltraMSG API (Multi-Inquilino)
+// Servicio de WhatsApp — UltraMSG & WaAPI API (Multi-Inquilino)
 // ============================================
 
 const ultramsg = require('ultramsg-whatsapp-api');
 
 // Caché de clientes instanciados para cada negocio
 const clients = {};
+
+/**
+ * Determina si el negocio está configurado con WaAPI en lugar de UltraMSG
+ */
+function isWaapiProvider(businessConfig) {
+  const { ultramsgToken, ultramsgInstance } = businessConfig;
+  if (!ultramsgToken) return false;
+  // Si el token es de 48 caracteres o si el instance es puramente numérico (como 96194)
+  const isNumericInstance = /^\d+$/.test(String(ultramsgInstance).trim());
+  const isWaapiToken = String(ultramsgToken).trim().length === 48;
+  return isNumericInstance || isWaapiToken;
+}
+
+/**
+ * Envía una solicitud HTTP POST a la API de WaAPI
+ */
+async function sendWaapiMessage(businessConfig, endpoint, payload) {
+  const { ultramsgInstance, ultramsgToken } = businessConfig;
+  const url = `https://waapi.app/api/v1/instances/${ultramsgInstance}/client/action/${endpoint}`;
+  
+  try {
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${ultramsgToken}`
+      },
+      body: JSON.stringify(payload)
+    });
+    
+    const data = await response.json();
+    if (!response.ok || data.status === 'error') {
+      console.error(`❌ Error en WaAPI (${endpoint}) para ${businessConfig.businessId}:`, data);
+      return { error: data.message || 'Error en WaAPI' };
+    }
+    return data;
+  } catch (error) {
+    console.error(`❌ Error de red/petición en WaAPI (${endpoint}):`, error.message);
+    throw error;
+  }
+}
 
 /**
  * Obtiene o crea la instancia de UltraMSG correspondiente al negocio
@@ -16,7 +58,7 @@ function getApiClient(businessConfig) {
   const { businessId, ultramsgInstance, ultramsgToken } = businessConfig;
   
   if (!ultramsgInstance || !ultramsgToken) {
-    throw new Error(`UltraMSG no configurado para el negocio: ${businessId || 'desconocido'}`);
+    throw new Error(`UltraMSG/WaAPI no configurado para el negocio: ${businessId || 'desconocido'}`);
   }
 
   const cacheKey = `${businessId}:${ultramsgInstance}`;
@@ -35,6 +77,13 @@ function getApiClient(businessConfig) {
  */
 async function sendText(businessConfig, to, body) {
   try {
+    if (isWaapiProvider(businessConfig)) {
+      return await sendWaapiMessage(businessConfig, 'send-message', {
+        chatId: to,
+        message: body
+      });
+    }
+
     const api = getApiClient(businessConfig);
     const response = await api.sendChatMessage(to, body);
     
@@ -58,6 +107,14 @@ async function sendText(businessConfig, to, body) {
  */
 async function sendImage(businessConfig, to, imageUrl, caption = '') {
   try {
+    if (isWaapiProvider(businessConfig)) {
+      return await sendWaapiMessage(businessConfig, 'send-media', {
+        chatId: to,
+        mediaUrl: imageUrl,
+        mediaCaption: caption
+      });
+    }
+
     const api = getApiClient(businessConfig);
     // Firma de ultramsg-whatsapp-api: sendImageMessage(to, caption, image, priority, referenceId, nocache)
     const response = await api.sendImageMessage(to, caption, imageUrl);
@@ -83,6 +140,14 @@ async function sendImage(businessConfig, to, imageUrl, caption = '') {
  */
 async function sendDocument(businessConfig, to, docUrl, filename = 'documento.pdf', caption = '') {
   try {
+    if (isWaapiProvider(businessConfig)) {
+      return await sendWaapiMessage(businessConfig, 'send-media', {
+        chatId: to,
+        mediaUrl: docUrl,
+        mediaCaption: caption || filename
+      });
+    }
+
     const api = getApiClient(businessConfig);
     // Firma de ultramsg-whatsapp-api: sendDocumentMessage(to, filename, document, priority, referenceId, nocache)
     const response = await api.sendDocumentMessage(to, filename, docUrl);
@@ -108,6 +173,16 @@ async function sendDocument(businessConfig, to, docUrl, filename = 'documento.pd
  */
 async function sendLocation(businessConfig, to, lat = '-38.0023', lng = '-57.5375', address = '') {
   try {
+    if (isWaapiProvider(businessConfig)) {
+      const finalAddress = address || `${businessConfig.name}`;
+      return await sendWaapiMessage(businessConfig, 'send-location', {
+        chatId: to,
+        latitude: parseFloat(lat),
+        longitude: parseFloat(lng),
+        title: finalAddress
+      });
+    }
+
     const api = getApiClient(businessConfig);
     const finalAddress = address || `${businessConfig.name}`;
     // Firma de ultramsg-whatsapp-api: sendLocationMessage(to, address, lat, lng, priority, referenceId)
