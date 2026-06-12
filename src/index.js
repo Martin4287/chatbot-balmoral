@@ -37,6 +37,26 @@ app.get('/', (req, res) => {
 
 app.get('/health', (req, res) => res.status(200).send('OK'));
 
+app.get('/debug-logs', (req, res) => {
+  try {
+    const fs = require('fs');
+    const path = require('path');
+    const LOGS_DIR = path.join(__dirname, '..', 'logs', 'conversations');
+    const now = new Date();
+    const dateStr = now.toISOString().split('T')[0];
+    const logFile = path.join(LOGS_DIR, `${dateStr}.log`);
+    
+    if (!fs.existsSync(logFile)) {
+      return res.status(404).send('No logs found for today.');
+    }
+    
+    const content = fs.readFileSync(logFile, 'utf8');
+    res.type('text/plain').send(content);
+  } catch (error) {
+    res.status(500).send('Error reading logs: ' + error.message);
+  }
+});
+
 // =============================================
 // Webhook principal — Recibe mensajes de UltraMSG
 // =============================================
