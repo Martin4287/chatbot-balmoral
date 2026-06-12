@@ -81,18 +81,29 @@ async function generateAIResponse(userMessage, context, history = [], senderInfo
 
       // Procesar comando de derivación automática
       const lowerResponse = response.toLowerCase();
-      const lowerQuery = userMessage.toLowerCase();
       
       const containsTag = response.includes('[DERIVAR_CONSULTA]');
       const mentionsDeriveInResponse = lowerResponse.includes('derivar') || lowerResponse.includes('derivación') || lowerResponse.includes('representante') || lowerResponse.includes('nos pondremos en contacto') || lowerResponse.includes('tomado nota');
-      const mentionsReservationInQuery = lowerQuery.includes('reservar') || lowerQuery.includes('reserva') || lowerQuery.includes('mesa para');
       
       const isDeriving = containsTag || mentionsDeriveInResponse;
+
+      // Detectar si hay datos de reserva estructurados
+      const reservaMatch = response.match(/\[RESERVA:\s*([^\]]+)\]/);
+      let reservaData = null;
+      if (reservaMatch) {
+        const pairs = reservaMatch[1].split('|');
+        reservaData = {};
+        for (const pair of pairs) {
+          const [key, ...rest] = pair.split('=');
+          if (key && rest.length) reservaData[key.trim()] = rest.join('=').trim();
+        }
+      }
 
       if (isDeriving) {
         const clienteNumero = senderInfo.numero;
         const clienteNombre = senderInfo.nombre;
         const clienteConsulta = userMessage;
+        const isReservation = !!reservaData;
         
         // 1. Enviar correo de derivación (Nodemailer)
         try {
@@ -106,12 +117,66 @@ async function generateAIResponse(userMessage, context, history = [], senderInfo
           });
 
           const recipientEmail = businessConfig.notificationEmail || process.env.EMAIL_USER;
-          const mailOptions = {
-            from: `"${businessConfig.name}" <${process.env.EMAIL_USER}>`,
-            to: recipientEmail, // Enviar al dueño del negocio
-            subject: `⚠️ Nueva Consulta de WhatsApp Derivada - ${businessConfig.name}`,
-            text: `El bot derivó una consulta del cliente.\n\nNombre del Cliente: ${clienteNombre}\nNúmero de WhatsApp: ${clienteNumero}\nConsulta Realizada:\n"${clienteConsulta}"\n\nRespuesta del Bot:\n"${response.replace(/\[DERIVAR_CONSULTA\]/gi, '').trim()}"`,
-            html: `
+          
+          let subject, htmlBody, textBody;
+
+          if (isReservation) {
+            // ===== EMAIL DE RESERVA ESTRUCTURADO =====
+            const r = reservaData;
+            subject = `📊 Nueva Reserva de WhatsApp - ${businessConfig.name}`;
+            textBody = [
+              `NUEVA SOLICITUD DE RESERVA - ${businessConfig.name}`,
+              ``,
+              `Nombre:    ${r.nombre  || '(no especificado)'}`,
+              `Cantidad:  ${r.cantidad || '(no especificado)'} personas`,
+              `Fecha:     ${r.fecha   || '(no especificado)'}`,
+              `Hora:      ${r.hora    || '(no especificado)'}`,
+              `Servicio:  ${r.servicio|| '(no especificado)'}`,
+              ``,
+              `WhatsApp del cliente: ${clienteNumero}`,
+              `Nombre en WA:         ${clienteNombre}`,
+            ].join('\n');
+            htmlBody = `
+              <div style="font-family: Arial, sans-serif; padding: 20px; color: #333; max-width: 600px;">
+                <h2 style="color: #16a34a; margin-bottom: 4px;">📊 Nueva Solicitud de Reserva</h2>
+                <p style="color: #666; margin-top: 0;">${businessConfig.name}</p>
+                <table style="width:100%; border-collapse: collapse; margin: 20px 0; background: #f0fdf4; border-radius: 8px; overflow: hidden;">
+                  <tr style="background: #16a34a; color: white;">
+                    <th colspan="2" style="padding: 12px 16px; text-align: left; font-size: 15px;">Datos de la Reserva</th>
+                  </tr>
+                  <tr>
+                    <td style="padding: 10px 16px; font-weight: bold; width: 35%; border-bottom: 1px solid #dcfce7;">👤 Nombre</td>
+                    <td style="padding: 10px 16px; border-bottom: 1px solid #dcfce7;">${r.nombre || '<em style="color:#999">No especificado</em>'}</td>
+                  </tr>
+                  <tr>
+                    <td style="padding: 10px 16px; font-weight: bold; border-bottom: 1px solid #dcfce7;">👥 Cantidad</td>
+                    <td style="padding: 10px 16px; border-bottom: 1px solid #dcfce7;">${r.cantidad || '<em style="color:#999">No especificado</em>'} personas</td>
+                  </tr>
+                  <tr>
+                    <td style="padding: 10px 16px; font-weight: bold; border-bottom: 1px solid #dcfce7;">📅 Fecha</td>
+                    <td style="padding: 10px 16px; border-bottom: 1px solid #dcfce7;">${r.fecha || '<em style="color:#999">No especificado</em>'}</td>
+                  </tr>
+                  <tr>
+                    <td style="padding: 10px 16px; font-weight: bold; border-bottom: 1px solid #dcfce7;">🕐 Hora</td>
+                    <td style="padding: 10px 16px; border-bottom: 1px solid #dcfce7;">${r.hora || '<em style="color:#999">No especificado</em>'}</td>
+                  </tr>
+                  <tr>
+                    <td style="padding: 10px 16px; font-weight: bold;">🍽️ Servicio</td>
+                    <td style="padding: 10px 16px;">${r.servicio || '<em style="color:#999">No especificado</em>'}</td>
+                  </tr>
+                </table>
+                <div style="background: #f3f4f6; padding: 14px 16px; border-radius: 8px; margin-top: 8px;">
+                  <p style="margin: 0 0 6px;"><strong>Cliente en WhatsApp:</strong> ${clienteNombre}</p>
+                  <p style="margin: 0;"><strong>Número:</strong> <a href="https://wa.me/${clienteNumero}">${clienteNumero}</a></p>
+                </div>
+                <p style="margin-top: 18px; color: #555;">Por favor confirmá la reserva contactándote con el cliente a la brevedad.</p>
+              </div>`;
+          } else {
+            // ===== EMAIL DE DERIVACIÓN GENÉRICA =====
+            subject = `⚠️ Nueva Consulta de WhatsApp Derivada - ${businessConfig.name}`;
+            const cleanResponse = response.replace(/\[DERIVAR_CONSULTA\]/gi, '').replace(/\[RESERVA:[^\]]*\]/gi, '').trim();
+            textBody = `El bot derivó una consulta del cliente.\n\nNombre del Cliente: ${clienteNombre}\nNúmero de WhatsApp: ${clienteNumero}\nConsulta Realizada:\n"${clienteConsulta}"\n\nRespuesta del Bot:\n"${cleanResponse}"`;
+            htmlBody = `
               <div style="font-family: Arial, sans-serif; padding: 20px; color: #333;">
                 <h2 style="color: #ef4444;">⚠️ Nueva Consulta Derivada - ${businessConfig.name}</h2>
                 <p>El bot derivó una consulta para atención humana.</p>
@@ -119,22 +184,27 @@ async function generateAIResponse(userMessage, context, history = [], senderInfo
                   <p><strong>Nombre del Cliente:</strong> ${clienteNombre}</p>
                   <p><strong>Número de WhatsApp:</strong> <a href="https://wa.me/${clienteNumero}">${clienteNumero}</a></p>
                   <p><strong>Consulta Realizada:</strong></p>
-                  <blockquote style="border-left: 4px solid #ef4444; padding-left: 10px; font-style: italic;">"${clienteConsulta}"</blockquote>
+                  <blockquote style="border-left: 4px solid #ef4444; padding-left: 10px; font-style: italic;">${clienteConsulta}</blockquote>
                   <p><strong>Respuesta del Bot:</strong></p>
-                  <p style="white-space: pre-wrap; font-size: 0.95em;">${response.replace(/\[DERIVAR_CONSULTA\]/gi, '').trim()}</p>
+                  <p style="white-space: pre-wrap; font-size: 0.95em;">${cleanResponse}</p>
                 </div>
                 <p>Por favor, contacte al cliente a la brevedad.</p>
-              </div>
-            `
-          };
+              </div>`;
+          }
 
-          await transporter.sendMail(mailOptions);
-          console.log(`✉️ Correo de derivación enviado a ${recipientEmail} para negocio ${businessId}`);
+          await transporter.sendMail({
+            from: `"${businessConfig.name}" <${process.env.EMAIL_USER}>`,
+            to: recipientEmail,
+            subject,
+            text: textBody,
+            html: htmlBody
+          });
+          console.log(`✉️ Correo ${isReservation ? 'de reserva' : 'de derivación'} enviado a ${recipientEmail} [${businessId}]`);
         } catch (err) {
            console.error('Error al enviar email via Nodemailer:', err);
         }
 
-        // 2. Enviar WhatsApp de derivación al número de ventas (si está configurado)
+        // 2. Enviar WhatsApp al número de ventas
         if (businessConfig.salesPhone && businessConfig.salesPhone.trim() !== '') {
           try {
             const { sendText } = require('./whatsappService');
@@ -143,26 +213,40 @@ async function generateAIResponse(userMessage, context, history = [], senderInfo
               salesPhone = `${salesPhone}@c.us`;
             }
 
-            const notificationText = 
-              `⚠️ *NUEVA RESERVA / CONSULTA DERIVADA*\n\n` +
-              `👤 *Cliente:* ${clienteNombre}\n` +
-              `📱 *WhatsApp:* https://wa.me/${clienteNumero}\n\n` +
-              `💬 *Consulta:* "${clienteConsulta}"\n\n` +
-              `🤖 *Respuesta del Bot:* "${response.replace(/\[DERIVAR_CONSULTA\]/gi, '').trim()}"\n\n` +
-              `👉 _Hacé clic en el enlace de WhatsApp para responderle directamente al cliente._`;
+            let notificationText;
+            if (reservaData) {
+              const r = reservaData;
+              notificationText =
+                `📊 *NUEVA RESERVA DE WHATSAPP*\n\n` +
+                `👤 *Nombre:* ${r.nombre   || '(no especificado)'}\n` +
+                `👥 *Cantidad:* ${r.cantidad || '(no especificado)'} personas\n` +
+                `📅 *Fecha:* ${r.fecha     || '(no especificado)'}\n` +
+                `🕐 *Hora:* ${r.hora       || '(no especificado)'}\n` +
+                `🍽️ *Servicio:* ${r.servicio|| '(no especificado)'}\n\n` +
+                `📱 *WhatsApp del cliente:* https://wa.me/${clienteNumero}\n` +
+                `👤 *Nombre en WA:* ${clienteNombre}\n\n` +
+                `👉 _Hacé clic en el enlace para confirmarle la reserva al cliente._`;
+            } else {
+              notificationText =
+                `⚠️ *NUEVA CONSULTA DERIVADA*\n\n` +
+                `👤 *Cliente:* ${clienteNombre}\n` +
+                `📱 *WhatsApp:* https://wa.me/${clienteNumero}\n\n` +
+                `💬 *Consulta:* "${clienteConsulta}"\n\n` +
+                `👉 _Hacé clic en el enlace de WhatsApp para responderle directamente al cliente._`;
+            }
 
-            // Enviamos a través de la API del propio negocio
             await sendText(businessConfig, salesPhone, notificationText);
-            console.log(`💬 WhatsApp de derivación enviado a ventas (${salesPhone}) [${businessId}]`);
+            console.log(`💬 WhatsApp de ${reservaData ? 'reserva' : 'derivación'} enviado a ventas (${salesPhone}) [${businessId}]`);
           } catch (err) {
             console.error('Error al enviar WhatsApp de derivación a ventas:', err.message);
           }
-        } else {
-          console.log(`ℹ️ Notificación de WhatsApp de derivación omitida (teléfono de ventas no configurado) [${businessId}]`);
         }
         
-        // Quitar la etiqueta del mensaje final
-        response = response.replace(/\[DERIVAR_CONSULTA\]/gi, '').trim();
+        // Quitar las etiquetas ocultas del mensaje final al cliente
+        response = response
+          .replace(/\[RESERVA:[^\]]*\]/gi, '')
+          .replace(/\[DERIVAR_CONSULTA\]/gi, '')
+          .trim();
       }
 
       // Limpiar la respuesta para WhatsApp (remover markdown excesivo)
