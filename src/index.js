@@ -58,7 +58,15 @@ app.get('/debug-logs', (req, res) => {
 });
 
 // =============================================
-// Webhook principal — Recibe mensajes de UltraMSG
+// Buffer diagnóstico para los últimos payloads recibidos
+// =============================================
+const lastWebhookPayloads = [];
+app.get('/debug-webhook', (req, res) => {
+  res.json({ count: lastWebhookPayloads.length, payloads: lastWebhookPayloads });
+});
+
+// =============================================
+// Webhook principal — Recibe mensajes de UltraMSG / WaAPI
 // =============================================
 app.post('/webhook/:businessId?', async (req, res) => {
   try {
@@ -69,13 +77,21 @@ app.post('/webhook/:businessId?', async (req, res) => {
     const data = req.body;
     if (!data) return;
 
+    // Guardar los últimos 5 payloads para diagnóstico
+    lastWebhookPayloads.unshift({ ts: new Date().toISOString(), businessId, payload: data });
+    if (lastWebhookPayloads.length > 5) lastWebhookPayloads.pop();
+
     let messageData = null;
 
-    // Detectar si el webhook es de WaAPI (contiene data.message)
-    if (data.data && data.data.message) {
+    // Detectar el proveedor del webhook:
+    // WaAPI envía: { event: '...', instanceId: '...', data: { message: {...} } }
+    // UltraMSG envía: { data: { id, from, body, type, fromMe, ... } } (sin campo 'event' ni 'instanceId')
+    const isWaapi = (data.event !== undefined || data.instanceId !== undefined) && data.data && data.data.message;
+    
+    if (isWaapi) {
       const waapiMsg = data.data.message;
       messageData = {
-        fromMe: waapiMsg.id ? waapiMsg.id.fromMe : false,
+        fromMe: waapiMsg.id ? Boolean(waapiMsg.id.fromMe) : false,
         from: waapiMsg.from || (waapiMsg.id ? waapiMsg.id.remote : ''),
         body: waapiMsg.body || '',
         type: waapiMsg.type || 'chat',
@@ -83,16 +99,18 @@ app.post('/webhook/:businessId?', async (req, res) => {
         pushname: waapiMsg.pushName || waapiMsg.pushname || 'Cliente'
       };
     } else if (data.data) {
-      // Formato UltraMSG
+      // Formato UltraMSG: el payload llega directamente en data.data
       messageData = data.data;
     }
 
     if (!messageData) return;
 
-    // Ignorar mensajes propios o de grupos
+    // Ignorar mensajes propios, de grupos o de canales de estado
     const isFromMe = messageData.fromMe === true || messageData.fromMe === 1 || messageData.fromMe === '1' || String(messageData.fromMe).toLowerCase() === 'true' || messageData.from === 'me';
     if (isFromMe) return;
     if (messageData.isGroup === true) return;
+    if (messageData.from === 'status@broadcast') return;
+    if (!messageData.from || messageData.from.trim() === '') return;
 
     log('📩 Mensaje recibido', {
       businessId,
