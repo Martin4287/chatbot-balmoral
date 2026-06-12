@@ -106,11 +106,8 @@ async function handleIncomingMessage(messageData, businessId = 'balmoral') {
     // Obtener contexto relevante de la base de conocimiento de este negocio
     const context = getRelevantContext(messageBody, businessId);
 
-    // Verificar si solicita algún recurso multimedia (foto general o de plato), pasando el historial
-    const mediaRequest = getMediaForTopic(messageBody, businessId, history);
-
-    // Obtener información del remitente
-    const senderNumber = sender.replace('@c.us', '');
+    // Obtener información del remitente (limpiar sufijos @c.us y @lid)
+    const senderNumber = sender.replace(/@c\.us$/, '').replace(/@lid$/, '').replace(/[^0-9]/g, '') || sender;
     const pushName = messageData.pushname || messageData.pushName || 'Cliente';
     const senderInfo = { numero: senderNumber, nombre: pushName };
 
@@ -122,12 +119,16 @@ async function handleIncomingMessage(messageData, businessId = 'balmoral') {
 
     if (customPrompt && !session.promoSent && isConversationEnding(messageBody, aiResponse)) {
       aiResponse = `${aiResponse}\n\n${customPrompt}`;
-      session.promoSent = true; // Marcar como enviado en la sesión actual
+      session.promoSent = true;
     }
 
-    // Guardar en historial
+    // Guardar en historial ANTES de buscar fotos, para que la búsqueda contextual
+    // pueda encontrar platos mencionados en la respuesta actual de la IA
     addToHistory(historyKey, 'user', messageBody);
     addToHistory(historyKey, 'assistant', aiResponse);
+
+    // Verificar si solicita algún recurso multimedia (foto general o de plato), pasando el historial actualizado
+    const mediaRequest = getMediaForTopic(messageBody, businessId, session.messages);
 
     // Enviar respuesta de texto
     await sendText(businessConfig, sender, aiResponse);

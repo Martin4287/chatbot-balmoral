@@ -203,47 +203,81 @@ function getRelevantContext(query, businessId = 'balmoral') {
  * @param {Array} history
  */
 function getMediaForTopic(query, businessId = 'balmoral', history = []) {
-  const q = query.toLowerCase();
+  const normalize = str => str
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')  // quitar acentos
+    .replace(/[^a-z0-9\s]/g, ' ')     // quitar caracteres especiales
+    .trim();
+
+  const q = normalize(query);
   const kb = knowledgeBases[businessId] || {};
   const rawKb = rawKnowledgeBases[businessId] || {};
 
-  const isAskingForPhoto = q.includes('foto') || q.includes('imagen') || q.includes('imágenes') || q.includes('mostra') || q.includes('ver');
-  const isAskingForGeneralMenu = q.includes('carta') || q.includes('menu') || q.includes('menú') || q.includes('pdf');
+  const isAskingForPhoto = 
+    q.includes('foto') || q.includes('imagen') || q.includes('imagenes') ||
+    q.includes('mostra') || q.includes('ver') || q.includes('manda') ||
+    q.includes('envia') || q.includes('tenes foto') || q.includes('hay foto') ||
+    q.includes('podes mandar') || q.includes('podes enviar');
+
+  const isAskingForGeneralMenu = q.includes('carta') || q.includes('menu') || q.includes('pdf');
 
   // Si pide una foto/imagen pero NO de la carta general, priorizamos buscar platos del menú
   const prioritizeDishes = isAskingForPhoto && !isAskingForGeneralMenu;
+
+  /**
+   * Verifica si el nombre del plato (o alguna de sus palabras clave) aparece
+   * en el texto de búsqueda usando coincidencia parcial por palabras.
+   */
+  const dishMatchesText = (dishName, text) => {
+    const normalizedDish = normalize(dishName);
+    // 1. Coincidencia exacta del nombre completo
+    if (text.includes(normalizedDish)) return true;
+    // 2. Coincidencia parcial: cada palabra significativa del plato en el texto
+    const stopWords = ['de', 'del', 'con', 'al', 'a', 'la', 'el', 'los', 'las', 'y', 'o', 'en'];
+    const dishWords = normalizedDish.split(/\s+/).filter(w => w.length > 2 && !stopWords.includes(w));
+    if (dishWords.length === 0) return false;
+    // Si AL MENOS UNA palabra clave del plato aparece en la consulta, es match
+    return dishWords.some(word => text.includes(word));
+  };
 
   const searchDishes = () => {
     const menuData = rawKb.menu || {};
     if (menuData.items && Array.isArray(menuData.items)) {
       if (isAskingForPhoto) {
-        // 2.1 Coincidencia directa por el nombre del plato en el mensaje actual (ej: "foto de las rabas")
+        // 2.1 Coincidencia directa: busca en el mensaje actual del usuario
         for (const item of menuData.items) {
-          if (item.imagen_url && q.includes(item.nombre.toLowerCase())) {
+          if (item.imagen_url && dishMatchesText(item.nombre, q)) {
+            console.log(`📸 Foto encontrada por mensaje directo: ${item.nombre}`);
             return {
               type: 'image',
               url: item.imagen_url,
-              caption: `Aquí tenés la foto de: *${item.nombre}*`
+              caption: `Aqui tenes la foto de: *${item.nombre}*`
             };
           }
         }
 
-        // 2.2 Coincidencia contextual: buscar qué platos se mencionaron en el último mensaje enviado por el asistente
+        // 2.2 Coincidencia contextual: busca en el ultimo mensaje enviado por el bot
         if (history && history.length > 0) {
           const lastAssistantMsg = [...history].reverse().find(msg => msg.role === 'assistant');
           if (lastAssistantMsg) {
-            const lastText = lastAssistantMsg.content.toLowerCase();
+            const lastText = normalize(lastAssistantMsg.content);
             for (const item of menuData.items) {
-              if (item.imagen_url && lastText.includes(item.nombre.toLowerCase())) {
+              if (item.imagen_url && dishMatchesText(item.nombre, lastText)) {
+                console.log(`📸 Foto encontrada por contexto del historial: ${item.nombre}`);
                 return {
                   type: 'image',
                   url: item.imagen_url,
-                  caption: `Aquí tenés la foto de: *${item.nombre}*`
+                  caption: `Aqui tenes la foto de: *${item.nombre}*`
                 };
               }
             }
           }
         }
+
+        // Log de debug si no se encontro ningun plato con foto
+        const itemsWithPhotos = menuData.items.filter(i => i.imagen_url);
+        console.log(`ℹ️ Busqueda de foto no encontro coincidencia. Platos con foto disponibles: [${itemsWithPhotos.map(i => i.nombre).join(', ')}]. Query: "${query}"`);
       }
     }
     return null;
