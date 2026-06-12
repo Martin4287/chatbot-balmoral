@@ -196,10 +196,13 @@ async function sendImage(businessConfig, to, imageUrl, caption = '') {
 async function sendDocument(businessConfig, to, docUrl, filename = 'documento.pdf', caption = '') {
   try {
     if (isWaapiProvider(businessConfig)) {
+      // Asegurar que el nombre del archivo tenga extensión .pdf para que WhatsApp lo muestre correctamente
+      const pdfFilename = filename.endsWith('.pdf') ? filename : filename.replace(/\.[^.]+$/, '') + '.pdf' || 'Carta.pdf';
       return await sendWaapiMessage(businessConfig, 'send-media', {
         chatId: to,
         mediaUrl: docUrl,
-        mediaCaption: caption || filename
+        mediaCaption: caption || '',
+        mediaName: pdfFilename  // campo clave: le dice a WaAPI cómo nombrar el archivo en WhatsApp
       });
     }
 

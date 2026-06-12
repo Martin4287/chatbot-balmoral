@@ -66,6 +66,26 @@ app.get('/debug-webhook', (req, res) => {
 });
 
 // =============================================
+// Deduplicador de mensajes — evita procesar el mismo
+// mensaje dos veces si el servidor se despierta tarde
+// y WaAPI reintenta el webhook.
+// =============================================
+const processedMessageIds = new Map(); // messageId -> timestamp
+const MESSAGE_DEDUP_TTL = 10 * 60 * 1000; // 10 minutos
+
+function isAlreadyProcessed(messageId) {
+  if (!messageId) return false;
+  const now = Date.now();
+  // Limpiar entradas viejas
+  for (const [id, ts] of processedMessageIds.entries()) {
+    if (now - ts > MESSAGE_DEDUP_TTL) processedMessageIds.delete(id);
+  }
+  if (processedMessageIds.has(messageId)) return true;
+  processedMessageIds.set(messageId, now);
+  return false;
+}
+
+// =============================================
 // Webhook principal — Recibe mensajes de UltraMSG / WaAPI
 // =============================================
 app.post('/webhook/:businessId?', async (req, res) => {
@@ -106,11 +126,13 @@ app.post('/webhook/:businessId?', async (req, res) => {
         body: waapiMsg.body || '',
         type: waapiMsg.type || 'chat',
         isGroup: waapiMsg.isGroup || false,
-        pushname: waapiMsg.notifyName || waapiMsg.pushName || waapiMsg.pushname || 'Cliente'
+        pushname: waapiMsg.notifyName || waapiMsg.pushName || waapiMsg.pushname || 'Cliente',
+        messageId: waapiMsg.id ? waapiMsg.id._serialized || waapiMsg.id.id : null
       };
     } else if (data.data) {
       // Formato UltraMSG: el payload llega directamente en data.data
       messageData = data.data;
+      messageData.messageId = data.data.id || null;
     }
 
     if (!messageData) return;
@@ -121,6 +143,12 @@ app.post('/webhook/:businessId?', async (req, res) => {
     if (messageData.isGroup === true) return;
     if (messageData.from === 'status@broadcast') return;
     if (!messageData.from || messageData.from.trim() === '') return;
+
+    // Deduplicación: ignorar si este mensaje ya fue procesado antes
+    if (isAlreadyProcessed(messageData.messageId)) {
+      console.log(`⏭️ Mensaje duplicado ignorado (ID: ${messageData.messageId})`);
+      return;
+    }
 
     log('📩 Mensaje recibido', {
       businessId,
