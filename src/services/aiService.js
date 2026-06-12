@@ -134,27 +134,31 @@ async function generateAIResponse(userMessage, context, history = [], senderInfo
            console.error('Error al enviar email via Nodemailer:', err);
         }
 
-        // 2. Enviar WhatsApp de derivación al número de ventas (UltraMSG)
-        try {
-          const { sendText } = require('./whatsappService');
-          let salesPhone = businessConfig.salesPhone || '5492233041076';
-          if (!salesPhone.endsWith('@c.us')) {
-            salesPhone = `${salesPhone}@c.us`;
+        // 2. Enviar WhatsApp de derivación al número de ventas (si está configurado)
+        if (businessConfig.salesPhone && businessConfig.salesPhone.trim() !== '') {
+          try {
+            const { sendText } = require('./whatsappService');
+            let salesPhone = businessConfig.salesPhone.trim();
+            if (!salesPhone.endsWith('@c.us')) {
+              salesPhone = `${salesPhone}@c.us`;
+            }
+
+            const notificationText = 
+              `⚠️ *NUEVA RESERVA / CONSULTA DERIVADA*\n\n` +
+              `👤 *Cliente:* ${clienteNombre}\n` +
+              `📱 *WhatsApp:* https://wa.me/${clienteNumero}\n\n` +
+              `💬 *Consulta:* "${clienteConsulta}"\n\n` +
+              `🤖 *Respuesta del Bot:* "${response.replace(/\[DERIVAR_CONSULTA\]/gi, '').trim()}"\n\n` +
+              `👉 _Hacé clic en el enlace de WhatsApp para responderle directamente al cliente._`;
+
+            // Enviamos a través de la API del propio negocio
+            await sendText(businessConfig, salesPhone, notificationText);
+            console.log(`💬 WhatsApp de derivación enviado a ventas (${salesPhone}) [${businessId}]`);
+          } catch (err) {
+            console.error('Error al enviar WhatsApp de derivación a ventas:', err.message);
           }
-
-          const notificationText = 
-            `⚠️ *NUEVA RESERVA / CONSULTA DERIVADA*\n\n` +
-            `👤 *Cliente:* ${clienteNombre}\n` +
-            `📱 *WhatsApp:* https://wa.me/${clienteNumero}\n\n` +
-            `💬 *Consulta:* "${clienteConsulta}"\n\n` +
-            `🤖 *Respuesta del Bot:* "${response.replace(/\[DERIVAR_CONSULTA\]/gi, '').trim()}"\n\n` +
-            `👉 _Hacé clic en el enlace de WhatsApp para responderle directamente al cliente._`;
-
-          // Enviamos a través del UltraMSG del propio negocio
-          await sendText(businessConfig, salesPhone, notificationText);
-          console.log(`💬 WhatsApp de derivación enviado a ventas (${salesPhone}) [${businessId}]`);
-        } catch (err) {
-          console.error('Error al enviar WhatsApp de derivación a ventas:', err.message);
+        } else {
+          console.log(`ℹ️ Notificación de WhatsApp de derivación omitida (teléfono de ventas no configurado) [${businessId}]`);
         }
         
         // Quitar la etiqueta del mensaje final
