@@ -92,7 +92,7 @@ async function loadKnowledgeBase(businessId = 'balmoral') {
         } else if (value.items) {
           // Si el menú está estructurado como lista visual
           businessKB[key] = value.items.map(item => 
-            `- ${item.nombre}: ${item.precio}${item.descripcion ? ` (${item.descripcion})` : ''}`
+            `- ${item.nombre}: ${item.precio}${item.descripcion ? ` (${item.descripcion})` : ''}${item.imagen_url ? ` [IMAGENES_ASOCIADAS: ${item.imagen_url}]` : ''}`
           ).join('\n');
         } else {
           businessKB[key] = JSON.stringify(value, null, 2);
@@ -148,6 +148,20 @@ function loadKnowledgeBaseLocalFallback() {
             str += `\n[FIN_PREGUNTA_FRECUENTE]`;
             return str;
           }).join('\n\n');
+        } else {
+          balmoralKB[key] = JSON.stringify(jsonData, null, 2);
+        }
+      } else if (key === 'menu') {
+        if (jsonData.content !== undefined) {
+          balmoralKB[key] = jsonData.content;
+        } else if (jsonData.items) {
+          balmoralKB[key] = jsonData.items.map(item => 
+            `- ${item.nombre}: ${item.precio}${item.descripcion ? ` (${item.descripcion})` : ''}${item.imagen_url ? ` [IMAGENES_ASOCIADAS: ${item.imagen_url}]` : ''}`
+          ).join('\n');
+        } else if (Array.isArray(jsonData)) {
+          balmoralKB[key] = jsonData.map(item => 
+            `- ${item.nombre}: ${item.precio}${item.descripcion ? ` (${item.descripcion})` : ''}${item.imagen_url ? ` [IMAGENES_ASOCIADAS: ${item.imagen_url}]` : ''}`
+          ).join('\n');
         } else {
           balmoralKB[key] = JSON.stringify(jsonData, null, 2);
         }
