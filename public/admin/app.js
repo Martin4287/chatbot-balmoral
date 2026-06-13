@@ -13,7 +13,7 @@ if (!token || !businessId) {
 
 // Mostrar datos del usuario
 document.getElementById('user-display').textContent = businessName || 'Administrador';
-document.getElementById('sidebar-business-name').textContent = businessName || 'RISTapp';
+document.getElementById('sidebar-business-name').innerHTML = (businessName || 'RISTapp') + ' <span style="font-size: 0.5em; opacity: 0.7; font-weight: normal; margin-left: 4px;">V1.2</span>';
 
 // Cierre de Sesión
 document.getElementById('btn-logout').addEventListener('click', () => {
