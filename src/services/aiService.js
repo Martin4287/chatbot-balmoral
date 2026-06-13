@@ -92,22 +92,13 @@ async function generateAIResponse(userMessage, context, history = [], senderInfo
       }
 
       // Procesar comando de derivación automática
-      const lowerResponse = response.toLowerCase();
+      const containsDerivTag   = response.includes('[DERIVAR_CONSULTA]');
+      const containsReservaTag = !!reservaData; // [RESERVA:...] solo también activa el email
       
-      const containsDerivTag  = response.includes('[DERIVAR_CONSULTA]');
-      const containsReservaTag = !!reservaData; // [RESERVA:...] solo también activa la derivación
-      const mentionsDeriveInResponse =
-        lowerResponse.includes('derivar') ||
-        lowerResponse.includes('derivación') ||
-        lowerResponse.includes('representante') ||
-        lowerResponse.includes('nos pondremos en contacto') ||
-        lowerResponse.includes('se pondrá en contacto') ||
-        lowerResponse.includes('pondrá en contacto') ||
-        lowerResponse.includes('nos comunicaremos') ||
-        lowerResponse.includes('tomado nota') ||
-        lowerResponse.includes('equipo se pondr');
-      
-      const isDeriving = containsDerivTag || containsReservaTag || mentionsDeriveInResponse;
+      // IMPORTANTE: Solo activamos la derivación si hay una etiqueta explícita.
+      // No usamos frases como "se pondrá en contacto" porque el bot las dice también
+      // cuando simplemente está pidiendo datos al cliente (falsos positivos).
+      const isDeriving = containsDerivTag || containsReservaTag;
 
       if (isDeriving) {
         const clienteNumero = senderInfo.numero;
