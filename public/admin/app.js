@@ -346,6 +346,23 @@ function renderFaqForm(data) {
           <label>Respuesta de la IA</label>
           <textarea rows="3" class="form-control-textarea" oninput="updateFaqItem(${index}, 'respuesta', this.value)">${faq.respuesta || ''}</textarea>
         </div>
+        
+        <div class="faq-images-section">
+          <label style="display: block; margin-bottom: 0.5rem; font-size: 0.85rem; color: #a1a1aa;">Imágenes Adjuntas (Opcional)</label>
+          <div class="faq-img-list" id="faq-img-list-${index}">
+            ${(faq.imagenes || []).map((url, imgIdx) => `
+              <div class="faq-img-thumb">
+                <img src="${url}" alt="FAQ">
+                <button class="btn-remove-img" onclick="removeFaqImage(${index}, ${imgIdx})" title="Eliminar foto"><ion-icon name="close-outline"></ion-icon></button>
+              </div>
+            `).join('')}
+            <div class="faq-img-add" onclick="document.getElementById('faq-file-${index}').click()" title="Subir nueva foto">
+              <ion-icon name="add-outline"></ion-icon>
+            </div>
+            <input type="file" id="faq-file-${index}" style="display:none;" accept="image/*" onchange="uploadFaqPhoto(${index})">
+          </div>
+        </div>
+
         <button class="btn btn-danger btn-delete-faq" onclick="deleteFaqItem(${index})">
           <ion-icon name="trash-outline"></ion-icon> Eliminar Pregunta
         </button>
@@ -485,21 +502,30 @@ window.copyHorariosToAll = (sourceDia) => {
 };
 
 // FAQs
-window.updateFaqItem = (index, field, value) => {
+function updateFaqItem(index, field, value) {
   faqItems[index][field] = value;
-};
+}
 
-window.deleteFaqItem = (index) => {
+function removeFaqImage(faqIndex, imgIndex) {
+  if (confirm('¿Seguro que quieres eliminar esta foto?')) {
+    faqItems[faqIndex].imagenes.splice(imgIndex, 1);
+    renderFaqForm({ items: faqItems });
+    toggleFaqAccordion(faqIndex);
+  }
+}
+
+function deleteFaqItem(index) {
   if (confirm('¿Seguro que querés eliminar esta pregunta?')) {
     faqItems.splice(index, 1);
     renderFaqForm({ items: faqItems });
   }
-};
+}
 
 document.getElementById('btn-add-faq').addEventListener('click', () => {
   faqItems.push({
     pregunta: 'Pregunta Nueva',
-    respuesta: 'Respuesta nueva.'
+    respuesta: 'Respuesta nueva.',
+    imagenes: []
   });
   renderFaqForm({ items: faqItems });
   toggleFaqAccordion(faqItems.length - 1); // Expandir la nueva
@@ -592,6 +618,46 @@ window.uploadDishPhoto = async (index) => {
   } catch (err) {
     alert('Error al subir la foto: ' + err.message);
     urlInput.value = '';
+  }
+};
+
+window.uploadFaqPhoto = async (index) => {
+  const fileInput = document.getElementById(`faq-file-${index}`);
+  if (fileInput.files.length === 0) return;
+  
+  const file = fileInput.files[0];
+  showToast('Subiendo foto... espere', 'info');
+  
+  try {
+    const base64 = await toBase64(file);
+    const cleanBase64 = base64.split(',')[1];
+    
+    const res = await fetch('/api/upload', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify({
+        fileName: file.name,
+        mimeType: file.type,
+        base64Data: cleanBase64
+      })
+    });
+    
+    const resData = await res.json();
+    if (!res.ok) throw new Error(resData.error || 'Error subiendo foto');
+    
+    if (!faqItems[index].imagenes) faqItems[index].imagenes = [];
+    faqItems[index].imagenes.push(resData.url);
+    
+    renderFaqForm({ items: faqItems });
+    toggleFaqAccordion(index);
+    showToast('📸 Foto adjuntada a la pregunta');
+  } catch (err) {
+    alert('Error al subir la foto: ' + err.message);
+  } finally {
+    fileInput.value = ''; // Reset
   }
 };
 

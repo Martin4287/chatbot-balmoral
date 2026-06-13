@@ -257,12 +257,37 @@ async function generateAIResponse(userMessage, context, history = [], senderInfo
           .trim();
       }
 
+      // Procesar envío de imágenes (SEND_MEDIA) de forma asíncrona pero secuencial
+      const mediaMatch = response.match(/\[SEND_MEDIA:\s*([^\]]+)\]/i);
+      if (mediaMatch) {
+        const urls = mediaMatch[1].split('|').map(u => u.trim()).filter(Boolean);
+        const { sendImage } = require('./whatsappService');
+        const destinatario = senderInfo.numero.includes('@') ? senderInfo.numero : `${senderInfo.numero}@c.us`;
+        
+        // Lanzamos el envío asíncrono en background para no demorar la respuesta de texto
+        (async () => {
+          for (const url of urls) {
+            try {
+              await new Promise(r => setTimeout(r, 1000)); // Pequeña pausa para asegurar orden de llegada en WhatsApp
+              await sendImage(businessConfig, destinatario, url);
+              console.log(`📸 Imagen de FAQ enviada a ${destinatario}`);
+            } catch (err) {
+              console.error('Error enviando media desde SEND_MEDIA:', err.message);
+            }
+          }
+        })();
+        
+        // Limpiar etiqueta del texto
+        response = response.replace(mediaMatch[0], '');
+      }
+
       // Limpiar SIEMPRE las etiquetas ocultas por si acaso Gemini las incluyó
       // sin cumplir la condición de derivación (red de seguridad para que nunca
       // lleguen al cliente como texto visible)
       response = response
         .replace(/\[RESERVA:[^\]]*\]/gi, '')
         .replace(/\[DERIVAR_CONSULTA\]/gi, '')
+        .replace(/\[SEND_MEDIA:[^\]]*\]/gi, '')
         .trim();
 
       // Limpiar la respuesta para WhatsApp (remover markdown excesivo)

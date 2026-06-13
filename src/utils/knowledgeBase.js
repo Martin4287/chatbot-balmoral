@@ -77,7 +77,13 @@ async function loadKnowledgeBase(businessId = 'balmoral') {
           businessKB[key] = value.content;
         } else {
           const faqItems = value.items || [];
-          businessKB[key] = faqItems.map(item => `P: ${item.pregunta}\nR: ${item.respuesta}`).join('\n\n');
+          businessKB[key] = faqItems.map(item => {
+            let str = `P: ${item.pregunta}\nR: ${item.respuesta}`;
+            if (item.imagenes && item.imagenes.length > 0) {
+              str += `\n[IMAGENES_ASOCIADAS: ${item.imagenes.join('|')}]`;
+            }
+            return str;
+          }).join('\n\n');
         }
       } else if (key === 'menu') {
         if (value.content !== undefined) {
@@ -133,7 +139,13 @@ function loadKnowledgeBaseLocalFallback() {
         if (jsonData.content !== undefined) {
           balmoralKB[key] = jsonData.content;
         } else if (Array.isArray(jsonData)) {
-          balmoralKB[key] = jsonData.map(item => `P: ${item.pregunta}\nR: ${item.respuesta}`).join('\n\n');
+          balmoralKB[key] = jsonData.map(item => {
+            let str = `P: ${item.pregunta}\nR: ${item.respuesta}`;
+            if (item.imagenes && item.imagenes.length > 0) {
+              str += `\n[IMAGENES_ASOCIADAS: ${item.imagenes.join('|')}]`;
+            }
+            return str;
+          }).join('\n\n');
         } else {
           balmoralKB[key] = JSON.stringify(jsonData, null, 2);
         }
