@@ -78,10 +78,11 @@ async function loadKnowledgeBase(businessId = 'balmoral') {
         } else {
           const faqItems = value.items || [];
           businessKB[key] = faqItems.map(item => {
-            let str = `P: ${item.pregunta}\nR: ${item.respuesta}`;
+            let str = `[INICIO_PREGUNTA_FRECUENTE]\nP: ${item.pregunta}\nR: ${item.respuesta}`;
             if (item.imagenes && item.imagenes.length > 0) {
               str += `\n[IMAGENES_ASOCIADAS: ${item.imagenes.join('|')}]`;
             }
+            str += `\n[FIN_PREGUNTA_FRECUENTE]`;
             return str;
           }).join('\n\n');
         }
@@ -140,10 +141,11 @@ function loadKnowledgeBaseLocalFallback() {
           balmoralKB[key] = jsonData.content;
         } else if (Array.isArray(jsonData)) {
           balmoralKB[key] = jsonData.map(item => {
-            let str = `P: ${item.pregunta}\nR: ${item.respuesta}`;
+            let str = `[INICIO_PREGUNTA_FRECUENTE]\nP: ${item.pregunta}\nR: ${item.respuesta}`;
             if (item.imagenes && item.imagenes.length > 0) {
               str += `\n[IMAGENES_ASOCIADAS: ${item.imagenes.join('|')}]`;
             }
+            str += `\n[FIN_PREGUNTA_FRECUENTE]`;
             return str;
           }).join('\n\n');
         } else {
