@@ -249,14 +249,21 @@ function getMediaForTopic(query, businessId = 'balmoral', history = []) {
    */
   const dishMatchesText = (dishName, text) => {
     const normalizedDish = normalize(dishName);
+    const normalizedText = normalize(text);
     // 1. Coincidencia exacta del nombre completo
-    if (text.includes(normalizedDish)) return true;
-    // 2. Coincidencia parcial: cada palabra significativa del plato en el texto
-    const stopWords = ['de', 'del', 'con', 'al', 'a', 'la', 'el', 'los', 'las', 'y', 'o', 'en'];
+    if (normalizedText.includes(normalizedDish)) return true;
+    // 2. Coincidencia parcial por palabras completas
+    const stopWords = [
+      'de', 'del', 'con', 'al', 'a', 'la', 'el', 'los', 'las', 'y', 'o', 'en',
+      'para', 'un', 'una', 'unos', 'unas', 'este', 'esta', 'estos', 'estas',
+      'dia', 'dias', 'dos', 'tres', 'cinco', 'unidades', 'eleccion', 'opciones', 'reyes'
+    ];
     const dishWords = normalizedDish.split(/\s+/).filter(w => w.length > 2 && !stopWords.includes(w));
     if (dishWords.length === 0) return false;
-    // Si AL MENOS UNA palabra clave del plato aparece en la consulta, es match
-    return dishWords.some(word => text.includes(word));
+    // Dividir el texto de la consulta en palabras individuales
+    const textWords = normalizedText.split(/\s+/);
+    // Si AL MENOS UNA palabra clave del plato aparece como palabra completa en la consulta, es match
+    return dishWords.some(word => textWords.includes(word));
   };
 
   const searchDishes = () => {
