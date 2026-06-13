@@ -122,6 +122,12 @@ async function generateAIResponse(userMessage, context, history = [], senderInfo
             if (isReservation) {
               // ===== EMAIL DE RESERVA ESTRUCTURADO =====
               const r = reservaData;
+              const isLid = clienteNumero.includes('@lid');
+              const displayNumero = clienteNumero.replace('@c.us', '').replace('@lid', '');
+              const waLinkHTML = isLid 
+                ? `<span style="color:#ef4444; font-size: 0.9em;">(ID interno oculto por WhatsApp - Respondé directo desde la app)</span>` 
+                : `<a href="https://wa.me/${displayNumero}">${displayNumero}</a>`;
+
               subject = `📊 Nueva Reserva de WhatsApp - ${businessConfig.name}`;
               htmlBody = `
                 <div style="font-family: Arial, sans-serif; padding: 20px; color: #333; max-width: 600px;">
@@ -139,7 +145,7 @@ async function generateAIResponse(userMessage, context, history = [], senderInfo
                   </table>
                   <div style="background: #f3f4f6; padding: 14px 16px; border-radius: 8px;">
                     <p style="margin: 0 0 6px;"><strong>Cliente en WhatsApp:</strong> ${clienteNombre}</p>
-                    <p style="margin: 0;"><strong>Número:</strong> <a href="https://wa.me/${clienteNumero}">${clienteNumero}</a></p>
+                    <p style="margin: 0;"><strong>Número:</strong> ${waLinkHTML}</p>
                   </div>
                   <p style="margin-top: 18px; color: #555;">Por favor confirmá la reserva contactándote con el cliente a la brevedad.</p>
                 </div>`;
