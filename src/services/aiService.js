@@ -141,7 +141,8 @@ async function generateAIResponse(userMessage, context, history = [], senderInfo
                     <tr><td style="padding: 10px 16px; font-weight: bold; border-bottom: 1px solid #dcfce7;">👥 Cantidad</td><td style="padding: 10px 16px; border-bottom: 1px solid #dcfce7;">${r.cantidad || '<em style="color:#999">No especificado</em>'} personas</td></tr>
                     <tr><td style="padding: 10px 16px; font-weight: bold; border-bottom: 1px solid #dcfce7;">📅 Fecha</td><td style="padding: 10px 16px; border-bottom: 1px solid #dcfce7;">${r.fecha || '<em style="color:#999">No especificado</em>'}</td></tr>
                     <tr><td style="padding: 10px 16px; font-weight: bold; border-bottom: 1px solid #dcfce7;">🕐 Hora</td><td style="padding: 10px 16px; border-bottom: 1px solid #dcfce7;">${r.hora || '<em style="color:#999">No especificado</em>'}</td></tr>
-                    <tr><td style="padding: 10px 16px; font-weight: bold;">🍽️ Servicio</td><td style="padding: 10px 16px;">${r.servicio || '<em style="color:#999">No especificado</em>'}</td></tr>
+                    <tr><td style="padding: 10px 16px; font-weight: bold; border-bottom: 1px solid #dcfce7;">🍽️ Servicio</td><td style="padding: 10px 16px; border-bottom: 1px solid #dcfce7;">${r.servicio || '<em style="color:#999">No especificado</em>'}</td></tr>
+                    <tr><td style="padding: 10px 16px; font-weight: bold; color: #16a34a;">📝 Notas</td><td style="padding: 10px 16px; font-style: italic;">${r.observaciones && r.observaciones.toLowerCase() !== 'ninguna' ? r.observaciones : '<em style="color:#999">Sin pedidos especiales</em>'}</td></tr>
                   </table>
                   <div style="background: #f3f4f6; padding: 14px 16px; border-radius: 8px;">
                     <p style="margin: 0 0 6px;"><strong>Cliente en WhatsApp:</strong> ${clienteNombre}</p>
