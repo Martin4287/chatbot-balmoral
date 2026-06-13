@@ -79,15 +79,7 @@ async function generateAIResponse(userMessage, context, history = [], senderInfo
       const result = await chat.sendMessage(promptWithContext);
       let response = result.response.text();
 
-      // Procesar comando de derivación automática
-      const lowerResponse = response.toLowerCase();
-      
-      const containsTag = response.includes('[DERIVAR_CONSULTA]');
-      const mentionsDeriveInResponse = lowerResponse.includes('derivar') || lowerResponse.includes('derivación') || lowerResponse.includes('representante') || lowerResponse.includes('nos pondremos en contacto') || lowerResponse.includes('tomado nota');
-      
-      const isDeriving = containsTag || mentionsDeriveInResponse;
-
-      // Detectar si hay datos de reserva estructurados
+      // Detectar si hay datos de reserva estructurados (ANTES de isDeriving para que lo active)
       const reservaMatch = response.match(/\[RESERVA:\s*([^\]]+)\]/);
       let reservaData = null;
       if (reservaMatch) {
@@ -98,6 +90,24 @@ async function generateAIResponse(userMessage, context, history = [], senderInfo
           if (key && rest.length) reservaData[key.trim()] = rest.join('=').trim();
         }
       }
+
+      // Procesar comando de derivación automática
+      const lowerResponse = response.toLowerCase();
+      
+      const containsDerivTag  = response.includes('[DERIVAR_CONSULTA]');
+      const containsReservaTag = !!reservaData; // [RESERVA:...] solo también activa la derivación
+      const mentionsDeriveInResponse =
+        lowerResponse.includes('derivar') ||
+        lowerResponse.includes('derivación') ||
+        lowerResponse.includes('representante') ||
+        lowerResponse.includes('nos pondremos en contacto') ||
+        lowerResponse.includes('se pondrá en contacto') ||
+        lowerResponse.includes('pondrá en contacto') ||
+        lowerResponse.includes('nos comunicaremos') ||
+        lowerResponse.includes('tomado nota') ||
+        lowerResponse.includes('equipo se pondr');
+      
+      const isDeriving = containsDerivTag || containsReservaTag || mentionsDeriveInResponse;
 
       if (isDeriving) {
         const clienteNumero = senderInfo.numero;
@@ -248,6 +258,14 @@ async function generateAIResponse(userMessage, context, history = [], senderInfo
           .replace(/\[DERIVAR_CONSULTA\]/gi, '')
           .trim();
       }
+
+      // Limpiar SIEMPRE las etiquetas ocultas por si acaso Gemini las incluyó
+      // sin cumplir la condición de derivación (red de seguridad para que nunca
+      // lleguen al cliente como texto visible)
+      response = response
+        .replace(/\[RESERVA:[^\]]*\]/gi, '')
+        .replace(/\[DERIVAR_CONSULTA\]/gi, '')
+        .trim();
 
       // Limpiar la respuesta para WhatsApp (remover markdown excesivo)
       return cleanForWhatsApp(response);
