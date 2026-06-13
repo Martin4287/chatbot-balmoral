@@ -126,7 +126,8 @@ async function generateAIResponse(userMessage, context, history = [], senderInfo
             }
           });
 
-          const recipientEmail = businessConfig.notificationEmail || process.env.EMAIL_USER;
+          const recipientEmail = businessConfig.notificationEmail || process.env.EMAIL_USER || 'martindarioschupp@gmail.com';
+          console.log(`📧 Enviando ${isReservation ? 'email de RESERVA' : 'email de DERIVACIÓN'} → ${recipientEmail} [negocio: ${businessId}]`);
           
           let subject, htmlBody, textBody;
 

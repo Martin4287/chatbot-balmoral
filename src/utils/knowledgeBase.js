@@ -57,7 +57,11 @@ async function loadKnowledgeBase(businessId = 'balmoral') {
         ultramsgInstance: configData.ultramsgInstance || '',
         ultramsgToken: configData.ultramsgToken || '',
         salesPhone: configData.salesPhone || '',
-        notificationEmail: configData.notificationEmail || '',
+        // Fallback encadenado: Firestore -> var entorno -> email hardcodeado de balmoral
+        notificationEmail: configData.notificationEmail ||
+                           process.env.NOTIFICATION_EMAIL ||
+                           process.env.EMAIL_USER ||
+                           (businessId === 'balmoral' ? 'martindarioschupp@gmail.com' : ''),
         geminiApiKey: configData.geminiApiKey || ''
       };
     }
