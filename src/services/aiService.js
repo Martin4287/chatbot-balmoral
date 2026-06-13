@@ -109,11 +109,18 @@ async function generateAIResponse(userMessage, context, history = [], senderInfo
         // 1. Enviar correo de derivación (Nodemailer)
         try {
           const nodemailer = require('nodemailer');
+          // Puerto 587 con STARTTLS — Render bloquea el 465 (SSL).
+          // El 587 es el puerto estándar de envío SMTP y está permitido.
           const transporter = nodemailer.createTransport({
-            service: 'gmail',
+            host: 'smtp.gmail.com',
+            port: 587,
+            secure: false,       // false = STARTTLS (se negocia después del handshake)
             auth: {
               user: process.env.EMAIL_USER,
               pass: process.env.EMAIL_PASS
+            },
+            tls: {
+              rejectUnauthorized: false  // tolerancia a certificados en entornos cloud
             }
           });
 
