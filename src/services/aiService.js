@@ -262,7 +262,7 @@ async function generateAIResponse(userMessage, context, history = [], senderInfo
       if (mediaMatch) {
         const urls = mediaMatch[1].split('|').map(u => u.trim()).filter(Boolean);
         const { sendImage } = require('./whatsappService');
-        const destinatario = senderInfo.numero.includes('@') ? senderInfo.numero : `${senderInfo.numero}@c.us`;
+        const destinatario = senderInfo.jid || (senderInfo.numero.includes('@') ? senderInfo.numero : `${senderInfo.numero}@c.us`);
         
         // Lanzamos el envío asíncrono en background para no demorar la respuesta de texto
         (async () => {

@@ -107,9 +107,36 @@ async function handleIncomingMessage(messageData, businessId = 'balmoral') {
     const context = getRelevantContext(messageBody, businessId);
 
     // Obtener información del remitente (limpiar sufijos @c.us y @lid)
-    const senderNumber = sender.replace(/@c\.us$/, '').replace(/@lid$/, '').replace(/[^0-9]/g, '') || sender;
+    let senderNumber = sender.replace(/@c\.us$/, '').replace(/@lid$/, '').replace(/[^0-9]/g, '') || sender;
     const pushName = messageData.pushname || messageData.pushName || 'Cliente';
-    const senderInfo = { numero: senderNumber, nombre: pushName };
+
+    // Si el remitente es un LID (@lid), intentamos resolver su número real de WhatsApp
+    if (sender.includes('@lid')) {
+      const { getContactInfo } = require('../services/whatsappService');
+      try {
+        console.log(`🔍 [${businessId}] Intentando resolver número real para LID: ${sender}`);
+        const contactInfo = await getContactInfo(businessConfig, sender);
+        if (contactInfo) {
+          const resolvedNumber = contactInfo.number || 
+                                 (contactInfo.id && typeof contactInfo.id === 'object' ? contactInfo.id.user : null) ||
+                                 (contactInfo.id && typeof contactInfo.id === 'string' ? contactInfo.id.replace('@c.us', '') : null) ||
+                                 contactInfo.phone;
+                                 
+          if (resolvedNumber) {
+            console.log(`✅ [${businessId}] LID ${sender} resuelto a número real: ${resolvedNumber}`);
+            senderNumber = resolvedNumber.replace(/[^0-9]/g, '');
+          } else {
+            console.log(`⚠️ [${businessId}] No se encontró el número real en la respuesta de contacto para LID: ${sender}`, JSON.stringify(contactInfo));
+          }
+        } else {
+          console.log(`⚠️ [${businessId}] No se pudo obtener la información del contacto para LID: ${sender}`);
+        }
+      } catch (err) {
+        console.error(`❌ [${businessId}] Error al resolver LID:`, err.message);
+      }
+    }
+
+    const senderInfo = { numero: senderNumber, nombre: pushName, jid: sender };
 
     // Generar respuesta con IA
     let aiResponse = await generateAIResponse(messageBody, context, history, senderInfo, businessId);

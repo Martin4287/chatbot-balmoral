@@ -257,4 +257,33 @@ async function sendLocation(businessConfig, to, lat = '-38.0023', lng = '-57.537
   }
 }
 
-module.exports = { sendText, sendImage, sendDocument, sendLocation };
+/**
+ * Obtiene la información de un contacto (JID, número real, etc.)
+ * @param {Object} businessConfig 
+ * @param {string} contactId 
+ */
+async function getContactInfo(businessConfig, contactId) {
+  try {
+    if (isWaapiProvider(businessConfig)) {
+      const res = await sendWaapiMessage(businessConfig, 'get-contact-by-id', {
+        contactId
+      });
+      return res && res.data ? res.data : null;
+    } else {
+      // Fallback para UltraMSG
+      const { ultramsgInstance, ultramsgToken } = businessConfig;
+      const url = `https://api.ultramsg.com/${ultramsgInstance}/contacts/contact?token=${ultramsgToken}&chatId=${contactId}`;
+      const response = await fetch(url);
+      if (response.ok) {
+        const data = await response.json();
+        return data.contact || data;
+      }
+      return null;
+    }
+  } catch (error) {
+    console.error(`❌ Error obteniendo info de contacto [${businessConfig.businessId}]:`, error.message);
+    return null;
+  }
+}
+
+module.exports = { sendText, sendImage, sendDocument, sendLocation, getContactInfo };
