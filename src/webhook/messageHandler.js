@@ -110,8 +110,10 @@ async function handleIncomingMessage(messageData, businessId = 'balmoral') {
     let senderNumber = sender.replace(/@c\.us$/, '').replace(/@lid$/, '').replace(/[^0-9]/g, '') || sender;
     const pushName = messageData.pushname || messageData.pushName || 'Cliente';
 
-    // Si el remitente es un LID (@lid), intentamos resolver su número real de WhatsApp
-    if (sender.includes('@lid')) {
+    let isLid = sender.includes('@lid') || (senderNumber && senderNumber.length >= 15);
+
+    // Si el remitente es un LID (@lid) o número largo, intentamos resolver su número real de WhatsApp
+    if (isLid) {
       const { getContactInfo } = require('../services/whatsappService');
       try {
         console.log(`🔍 [${businessId}] Intentando resolver número real para LID: ${sender}`);
@@ -125,6 +127,7 @@ async function handleIncomingMessage(messageData, businessId = 'balmoral') {
           if (resolvedNumber) {
             console.log(`✅ [${businessId}] LID ${sender} resuelto a número real: ${resolvedNumber}`);
             senderNumber = resolvedNumber.replace(/[^0-9]/g, '');
+            isLid = false; // Resolved successfully!
           } else {
             console.log(`⚠️ [${businessId}] No se encontró el número real en la respuesta de contacto para LID: ${sender}`, JSON.stringify(contactInfo));
           }
@@ -136,7 +139,7 @@ async function handleIncomingMessage(messageData, businessId = 'balmoral') {
       }
     }
 
-    const senderInfo = { numero: senderNumber, nombre: pushName, jid: sender };
+    const senderInfo = { numero: senderNumber, nombre: pushName, jid: sender, isLid };
 
     // Generar respuesta con IA
     let aiResponse = await generateAIResponse(messageBody, context, history, senderInfo, businessId);
