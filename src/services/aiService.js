@@ -73,7 +73,7 @@ async function generateAIResponse(userMessage, context, history = [], senderInfo
       });
 
       // Construir el prompt con contexto indicando si es inicio de conversación
-      const promptWithContext = buildPromptWithContext(userMessage, context, history.length === 0);
+      const promptWithContext = buildPromptWithContext(userMessage, context, history.length === 0, senderInfo);
 
       // Enviar mensaje y obtener respuesta
       const result = await chat.sendMessage(promptWithContext);
@@ -92,9 +92,17 @@ async function generateAIResponse(userMessage, context, history = [], senderInfo
       }
 
       // Procesar comando de derivación automática
-      const containsDerivTag   = response.includes('[DERIVAR_CONSULTA]');
+      const derivMatch = response.match(/\[DERIVAR_CONSULTA(?::\s*([^\]]+))?\]/i);
+      const containsDerivTag   = !!derivMatch;
       const containsReservaTag = !!reservaData;
       const isDeriving = containsDerivTag || containsReservaTag;
+
+      let derivTelefono = null;
+      if (derivMatch && derivMatch[1]) {
+        const derivParam = derivMatch[1].trim();
+        const telMatch = derivParam.match(/telefono\s*=\s*(.+)/i);
+        derivTelefono = telMatch ? telMatch[1].trim() : derivParam;
+      }
 
       // ===== DIAGNÓSTICO DETALLADO =====
       console.log(`🔍 [DIAG] Respuesta AI (primeros 300 chars): ${response.substring(0, 300).replace(/\n/g, '↵')}`);
@@ -107,6 +115,11 @@ async function generateAIResponse(userMessage, context, history = [], senderInfo
         const clienteNombre = senderInfo.nombre;
         const clienteConsulta = userMessage;
         const isReservation = !!reservaData;
+
+        // Determinar el teléfono real de contacto proporcionado o resuelto
+        const telefonoContacto = (reservaData && reservaData.telefono) || 
+                                 derivTelefono || 
+                                 (senderInfo.isLid ? null : senderInfo.numero);
         
         // 1. Enviar correo vía Resend (API HTTPS) — Render bloquea todos los puertos SMTP
         try {
@@ -122,10 +135,10 @@ async function generateAIResponse(userMessage, context, history = [], senderInfo
             if (isReservation) {
               // ===== EMAIL DE RESERVA ESTRUCTURADO =====
               const r = reservaData;
-              const isLid = clienteNumero.includes('@lid');
-              const displayNumero = clienteNumero.replace('@c.us', '').replace('@lid', '');
-              const waLinkHTML = isLid 
-                ? `<span style="color:#ef4444; font-size: 0.9em;">(ID interno oculto por WhatsApp - Respondé directo desde la app)</span>` 
+              const displayNumero = telefonoContacto || clienteNumero;
+              const isLidDisplay = senderInfo.isLid && !telefonoContacto;
+              const waLinkHTML = isLidDisplay 
+                ? `<span>${displayNumero} <em style="color:#ef4444; font-size: 0.85em;">(ID de chat oculto - no es un número de teléfono llamable)</em></span>` 
                 : `<a href="https://wa.me/${displayNumero}">${displayNumero}</a>`;
 
               subject = `📊 Nueva Reserva de WhatsApp - ${businessConfig.name}`;
@@ -138,6 +151,7 @@ async function generateAIResponse(userMessage, context, history = [], senderInfo
                       <th colspan="2" style="padding: 12px 16px; text-align: left; font-size: 15px;">Datos de la Reserva</th>
                     </tr>
                     <tr><td style="padding: 10px 16px; font-weight: bold; width: 35%; border-bottom: 1px solid #dcfce7;">👤 Nombre</td><td style="padding: 10px 16px; border-bottom: 1px solid #dcfce7;">${r.nombre || '<em style="color:#999">No especificado</em>'}</td></tr>
+                    <tr><td style="padding: 10px 16px; font-weight: bold; border-bottom: 1px solid #dcfce7;">📞 Teléfono de Contacto</td><td style="padding: 10px 16px; border-bottom: 1px solid #dcfce7;">${telefonoContacto || '<span style="color:#ef4444; font-style:italic;">No proporcionado (LID oculto)</span>'}</td></tr>
                     <tr><td style="padding: 10px 16px; font-weight: bold; border-bottom: 1px solid #dcfce7;">👥 Cantidad</td><td style="padding: 10px 16px; border-bottom: 1px solid #dcfce7;">${r.cantidad || '<em style="color:#999">No especificado</em>'} personas</td></tr>
                     <tr><td style="padding: 10px 16px; font-weight: bold; border-bottom: 1px solid #dcfce7;">📅 Fecha</td><td style="padding: 10px 16px; border-bottom: 1px solid #dcfce7;">${r.fecha || '<em style="color:#999">No especificado</em>'}</td></tr>
                     <tr><td style="padding: 10px 16px; font-weight: bold; border-bottom: 1px solid #dcfce7;">🕐 Hora</td><td style="padding: 10px 16px; border-bottom: 1px solid #dcfce7;">${r.hora || '<em style="color:#999">No especificado</em>'}</td></tr>
@@ -146,13 +160,19 @@ async function generateAIResponse(userMessage, context, history = [], senderInfo
                   </table>
                   <div style="background: #f3f4f6; padding: 14px 16px; border-radius: 8px;">
                     <p style="margin: 0 0 6px;"><strong>Cliente en WhatsApp:</strong> ${clienteNombre}</p>
-                    <p style="margin: 0;"><strong>Número:</strong> ${waLinkHTML}</p>
+                    <p style="margin: 0;"><strong>Chat de WhatsApp:</strong> ${waLinkHTML}</p>
                   </div>
                   <p style="margin-top: 18px; color: #555;">Por favor confirmá la reserva contactándote con el cliente a la brevedad.</p>
                 </div>`;
             } else {
               // ===== EMAIL DE DERIVACIÓN GENÉRICA =====
-              const cleanResponse = response.replace(/\[RESERVA:[^\]]*\]/gi, '').replace(/\[DERIVAR_CONSULTA\]/gi, '').trim();
+              const cleanResponse = response.replace(/\[RESERVA:[^\]]*\]/gi, '').replace(/\[DERIVAR_CONSULTA[^\]]*\]/gi, '').trim();
+              const displayNumero = telefonoContacto || clienteNumero;
+              const isLidDisplay = senderInfo.isLid && !telefonoContacto;
+              const waLinkHTML = isLidDisplay 
+                ? `<span>${displayNumero} <em style="color:#ef4444; font-size: 0.85em;">(ID de chat oculto - no es un número de teléfono llamable)</em></span>` 
+                : `<a href="https://wa.me/${displayNumero}">${displayNumero}</a>`;
+
               subject = `⚠️ Nueva Consulta de WhatsApp - ${businessConfig.name}`;
               htmlBody = `
                 <div style="font-family: Arial, sans-serif; padding: 20px; color: #333;">
@@ -160,7 +180,8 @@ async function generateAIResponse(userMessage, context, history = [], senderInfo
                   <p>El bot derivó una consulta para atención humana.</p>
                   <div style="background-color: #f3f4f6; padding: 15px; border-radius: 8px; margin: 15px 0;">
                     <p><strong>Nombre del Cliente:</strong> ${clienteNombre}</p>
-                    <p><strong>Número de WhatsApp:</strong> <a href="https://wa.me/${clienteNumero}">${clienteNumero}</a></p>
+                    <p><strong>Chat de WhatsApp:</strong> ${waLinkHTML}</p>
+                    <p><strong>Teléfono de Contacto:</strong> ${telefonoContacto || '<span style="color:#ef4444; font-style:italic;">No proporcionado (LID oculto)</span>'}</p>
                     <p><strong>Consulta:</strong></p>
                     <blockquote style="border-left: 4px solid #ef4444; padding-left: 10px; font-style: italic;">${clienteConsulta}</blockquote>
                     <p><strong>Respuesta del Bot:</strong></p>
@@ -227,18 +248,20 @@ async function generateAIResponse(userMessage, context, history = [], senderInfo
               notificationText =
                 `📊 *NUEVA RESERVA DE WHATSAPP*\n\n` +
                 `👤 *Nombre:* ${r.nombre   || '(no especificado)'}\n` +
+                `📞 *Teléfono:* ${telefonoContacto || '(no especificado - LID oculto)'}\n` +
                 `👥 *Cantidad:* ${r.cantidad || '(no especificado)'} personas\n` +
                 `📅 *Fecha:* ${r.fecha     || '(no especificado)'}\n` +
                 `🕐 *Hora:* ${r.hora       || '(no especificado)'}\n` +
                 `🍽️ *Servicio:* ${r.servicio|| '(no especificado)'}\n\n` +
-                `📱 *WhatsApp del cliente:* https://wa.me/${clienteNumero}\n` +
+                `💬 *WhatsApp:* ${senderInfo.isLid && !telefonoContacto ? `Oculto (${clienteNumero})` : `https://wa.me/${telefonoContacto || clienteNumero}`}\n` +
                 `👤 *Nombre en WA:* ${clienteNombre}\n\n` +
                 `👉 _Hacé clic en el enlace para confirmarle la reserva al cliente._`;
             } else {
               notificationText =
                 `⚠️ *NUEVA CONSULTA DERIVADA*\n\n` +
                 `👤 *Cliente:* ${clienteNombre}\n` +
-                `📱 *WhatsApp:* https://wa.me/${clienteNumero}\n\n` +
+                `📞 *Teléfono:* ${telefonoContacto || '(no especificado - LID oculto)'}\n` +
+                `💬 *WhatsApp:* ${senderInfo.isLid && !telefonoContacto ? `Oculto (${clienteNumero})` : `https://wa.me/${telefonoContacto || clienteNumero}`}\n\n` +
                 `💬 *Consulta:* "${clienteConsulta}"\n\n` +
                 `👉 _Hacé clic en el enlace de WhatsApp para responderle directamente al cliente._`;
             }
@@ -432,7 +455,7 @@ Respondé ÚNICAMENTE con un objeto JSON válido que cumpla con el siguiente for
 /**
  * Construye el prompt inyectando el contexto de la base de conocimiento y reglas de saludo
  */
-function buildPromptWithContext(userMessage, context, isNewConversation = true) {
+function buildPromptWithContext(userMessage, context, isNewConversation = true, senderInfo = {}) {
   const options = { timeZone: 'America/Argentina/Buenos_Aires', weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false };
   const currentDateTime = new Intl.DateTimeFormat('es-AR', options).format(new Date());
 
@@ -440,22 +463,27 @@ function buildPromptWithContext(userMessage, context, isNewConversation = true) 
     ? `[INSTRUCCIÓN DE SALUDO: Este es el inicio de la conversación con el cliente. Saludá obligatoriamente de acuerdo a la hora actual (${currentDateTime}) y atendé su consulta. Evitá saludos repetitivos.]`
     : `[INSTRUCCIÓN DE SALUDO: Esta es una conversación en curso (ya se saludaron previamente). NO vuelvas a saludar al cliente con palabras como "Hola", "Buen día", "Buenos días", "Buenas tardes", "Buenas noches" ni similares. Respondé directamente a la consulta del cliente sin saludar de nuevo, manteniendo la fluidez de la conversación.]`;
 
-  if (!context || context.trim() === '') {
-    return `[CONTEXTO DE SISTEMA: Hoy es ${currentDateTime}]
-${conversationStatusRule}
+  let lidInstruction = '';
+  if (senderInfo.isLid) {
+    lidInstruction = `\n[INSTRUCCIÓN CRÍTICA DE PRIVACIDAD: El número de teléfono de este cliente está oculto por seguridad de WhatsApp (LID). Por lo tanto, si el cliente desea realizar una reserva o hablar con un representante humano, es OBLIGATORIO que primero le solicites amablemente su número de teléfono de contacto para poder registrarlo. No des por confirmada ninguna reserva ni dejes derivar la consulta sin haber obtenido y confirmado su número telefónico. Una vez que te dé el número de teléfono, inclúyelo en la etiqueta correspondiente como 'telefono=NÚMERO' (ej: [RESERVA: nombre=...|telefono=NÚMERO|...] o [DERIVAR_CONSULTA: telefono=NÚMERO]).]\n`;
+  }
 
+  if (!context || context.trim() === '') {
+    return `[CONTEXTO DE SISTEMA: Hoy es ${currentDateTime}]${lidInstruction}
+${conversationStatusRule}
+ 
 Pregunta del cliente: ${userMessage}`;
   }
 
-  return `[CONTEXTO DE SISTEMA: Hoy es ${currentDateTime}]
+  return `[CONTEXTO DE SISTEMA: Hoy es ${currentDateTime}]${lidInstruction}
 ${conversationStatusRule}
-
+ 
 [INFORMACIÓN DEL RESTAURANTE RELEVANTE PARA ESTA CONSULTA]
 ${context}
 [FIN DE INFORMACIÓN]
-
+ 
 Pregunta del cliente: ${userMessage}
-
+ 
 Respondé usando ÚNICAMENTE la información proporcionada arriba. Si la información no es suficiente para responder completamente, indicá amablemente que pueden consultar directamente al restaurante.`;
 }
 
