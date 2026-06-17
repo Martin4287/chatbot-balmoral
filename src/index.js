@@ -167,6 +167,7 @@ app.post('/webhook/:businessId?', async (req, res) => {
     console.error('❌ Error en webhook:', error.message);
     log('❌ Error en webhook', { error: error.message, stack: error.stack });
   }
+});
 // =============================================
 // Tarea de Seguimiento / Re-engagement de 15 Minutos
 // =============================================
