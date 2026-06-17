@@ -515,4 +515,54 @@ function cleanForWhatsApp(text) {
   return cleaned.trim();
 }
 
-module.exports = { generateAIResponse, parseMenuFromDocument };
+/**
+ * Genera un mensaje de seguimiento/reenganche personalizado usando Gemini
+ * @param {Array} history — Historial de mensajes
+ * @param {string} businessId — ID del negocio
+ */
+async function generateFollowUp(history = [], businessId = 'balmoral') {
+  const { getBusinessConfig } = require('../utils/knowledgeBase');
+  const businessConfig = getBusinessConfig(businessId);
+  const MODELS_TO_TRY = ['gemini-3.5-flash', 'gemini-3.1-flash-lite', 'gemini-2.5-flash', 'gemini-2.0-flash'];
+  let lastError;
+  
+  if (!history || history.length === 0) {
+    return `¡Hola! ✨ ¿En qué puedo ayudarte hoy en *${businessConfig.name}*? Quedo a tu disposición.`;
+  }
+
+  const prompt = `Actúas como el asistente virtual de *${businessConfig.name}*. 
+Hemos estado hablando con un cliente, pero nos ha dejado de responder tras nuestro último mensaje.
+
+Tu objetivo es redactar un único mensaje de seguimiento muy breve, cálido y amable para retomar la conversación de forma natural.
+
+Reglas:
+1. Analiza el historial de chat provisto.
+2. Identifica cuál fue el último tema del que se habló (por ejemplo: si estábamos pidiendo datos para una reserva, si preguntó por la carta, si tenía dudas de horarios, etc.).
+3. Haz una pregunta corta y natural relacionada a ese último tema para ver si necesita ayuda o si quiere concretar (ej: "Hola Martín, ¿pudiste definir cuántas personas serían para la reserva?", "Hola, ¿tienes alguna duda sobre la carta que te compartí?").
+4. Sé extremadamente natural, simpático y nada insistente ni robótico.
+5. NO uses palabras de despedida.
+6. Máximo 1 o 2 oraciones breves.
+
+Aquí tienes el historial de la conversación:
+${history.map(msg => `${msg.role === 'assistant' ? 'Asistente' : 'Cliente'}: ${msg.content}`).join('\n')}
+
+Genera el mensaje de seguimiento:`;
+
+  for (const modelName of MODELS_TO_TRY) {
+    try {
+      console.log(`🤖 [${businessId}] Generando seguimiento con modelo: ${modelName}`);
+      const model = createModel(modelName, businessId);
+      const result = await model.generateContent(prompt);
+      let response = result.response.text();
+      return cleanForWhatsApp(response);
+    } catch (error) {
+      console.warn(`⚠️ Error al generar seguimiento con modelo ${modelName}:`, error.message);
+      lastError = error;
+    }
+  }
+
+  // Fallback si todos los modelos de IA fallan
+  return `¡Hola! ✨ ¿Tienes alguna otra consulta sobre nuestro menú o deseas coordinar una reserva? Quedo a tu entera disposición.`;
+}
+
+module.exports = { generateAIResponse, parseMenuFromDocument, generateFollowUp };

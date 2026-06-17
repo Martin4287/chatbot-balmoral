@@ -8,10 +8,13 @@ const express = require('express');
 const bodyParser = require('body-parser');
 const basicAuth = require('express-basic-auth');
 const path = require('path');
-const { handleIncomingMessage } = require('./webhook/messageHandler');
+const { handleIncomingMessage, saveSession } = require('./webhook/messageHandler');
 const { log } = require('./utils/logger');
-const { loadKnowledgeBase } = require('./utils/knowledgeBase');
+const { loadKnowledgeBase, getBusinessConfig } = require('./utils/knowledgeBase');
 const adminRoutes = require('./routes/adminRoutes');
+const { getPendingFollowUpSessions, getRegisteredBusinessIds } = require('./utils/firebase');
+const { generateFollowUp } = require('./services/aiService');
+const { sendText } = require('./services/whatsappService');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -164,7 +167,86 @@ app.post('/webhook/:businessId?', async (req, res) => {
     console.error('❌ Error en webhook:', error.message);
     log('❌ Error en webhook', { error: error.message, stack: error.stack });
   }
+// =============================================
+// Tarea de Seguimiento / Re-engagement de 15 Minutos
+// =============================================
+async function checkAndSendFollowUps() {
+  console.log('⏰ Ejecutando chequeo automático de seguimiento...');
+  try {
+    const businessIds = await getRegisteredBusinessIds();
+    const now = Date.now();
+    const fifteenMins = 15 * 60 * 1000;
+    const twoHours = 2 * 60 * 60 * 1000;
+
+    for (const businessId of businessIds) {
+      const pendingSessions = await getPendingFollowUpSessions(businessId);
+      
+      for (const session of pendingSessions) {
+        const timeDiff = now - session.lastActive;
+        // Si han pasado entre 15 minutos y 2 horas desde el último mensaje del bot
+        if (timeDiff >= fifteenMins && timeDiff <= twoHours) {
+          const sender = session.sender;
+          console.log(`✉️ Reenganchando chat inactivo: ${sender} [negocio: ${businessId}, tiempo: ${Math.round(timeDiff/1000/60)}m]`);
+          
+          try {
+            // 1. Generar el mensaje de seguimiento personalizado con Gemini
+            const followUpText = await generateFollowUp(session.messages, businessId);
+            
+            // 2. Cargar configuración para enviar WhatsApp
+            const businessConfig = getBusinessConfig(businessId);
+            
+            // 3. Enviar mensaje por WhatsApp
+            await sendText(businessConfig, sender, followUpText);
+            
+            // 4. Actualizar historial de la sesión en memoria
+            session.messages.push({ role: 'assistant', content: followUpText, timestamp: Date.now() });
+            
+            // Mantener solo los últimos N mensajes
+            if (session.messages.length > 20) {
+              session.messages.splice(0, session.messages.length - 20);
+            }
+            
+            // 5. Marcar como enviado, actualizar lastActive y guardar
+            session.followUpSent = true;
+            session.lastActive = Date.now();
+            session.lastSender = 'assistant';
+            
+            await saveSession(businessId, sender, session);
+            console.log(`✅ Seguimiento enviado exitosamente a ${sender}`);
+            log('✉️ Seguimiento automático enviado', { businessId, to: sender, message: followUpText });
+          } catch (err) {
+            console.error(`❌ Error enviando seguimiento a ${sender}:`, err.message);
+          }
+        }
+      }
+    }
+  } catch (error) {
+    console.error('❌ Error en tarea de seguimiento checkAndSendFollowUps:', error.message);
+  }
+}
+
+// Iniciar tarea en segundo plano ejecutándose cada 2 minutos
+setInterval(() => {
+  checkAndSendFollowUps().catch(console.error);
+}, 2 * 60 * 1000);
+
+// Endpoint de trigger manual o mediante cronjob externo (ej. UptimeRobot)
+app.get('/api/cron/follow-up', async (req, res) => {
+  try {
+    const secret = req.query.secret;
+    const expectedSecret = process.env.ADMIN_PASS || 'Balmoral2026';
+    if (secret !== expectedSecret) {
+      return res.status(401).send('No autorizado');
+    }
+    
+    // Ejecutar asíncronamente
+    checkAndSendFollowUps().catch(console.error);
+    res.json({ success: true, message: 'Chequeo de seguimientos disparado correctamente.' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
+
 
 // Iniciar servidor
 app.listen(PORT, () => {

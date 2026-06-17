@@ -7,34 +7,72 @@ const { sendText, sendImage, sendDocument } = require('../services/whatsappServi
 const { getRelevantContext, getMediaForTopic, getBusinessConfig, getCustomPrompt } = require('../utils/knowledgeBase');
 const { log } = require('../utils/logger');
 
-// Almacén de sesiones en memoria para aislar historiales y guardar estado (ej. promociones enviadas)
-// Indexado por la combinación "businessId:sender"
+// Almacén de sesiones en memoria de respaldo (si Firebase no está configurado)
 const sessions = new Map();
 const MAX_HISTORY = 10; // Máximo de mensajes por conversación
 
-/**
- * Obtiene o crea la sesión de un usuario de forma segura
- */
-function getOrCreateSession(historyKey) {
-  const TWO_HOURS = 2 * 60 * 60 * 1000;
-  const now = Date.now();
-  if (sessions.has(historyKey)) {
-    const session = sessions.get(historyKey);
-    if (now - session.lastActive > TWO_HOURS) {
-      sessions.delete(historyKey);
-    }
-  }
+const { getDocument, saveDocument, isFirebaseConfigured } = require('../utils/firebase');
 
-  if (!sessions.has(historyKey)) {
-    sessions.set(historyKey, {
-      messages: [],
-      promoSent: false,
-      lastActive: now
-    });
+/**
+ * Obtiene o crea la sesión de un usuario de forma segura (Firestore con fallback local)
+ */
+async function getOrCreateSession(businessId, sender) {
+  const now = Date.now();
+  const defaultSession = {
+    messages: [],
+    promoSent: false,
+    lastActive: now,
+    lastSender: 'user',
+    followUpSent: false,
+    closed: false
+  };
+
+  try {
+    if (!isFirebaseConfigured()) {
+      const historyKey = `${businessId}:${sender}`;
+      if (!sessions.has(historyKey)) {
+        sessions.set(historyKey, defaultSession);
+      }
+      const session = sessions.get(historyKey);
+      session.lastActive = now;
+      return session;
+    }
+
+    const docData = await getDocument(`businesses/${businessId}/sessions`, sender);
+    if (!docData) {
+      await saveDocument(`businesses/${businessId}/sessions`, sender, defaultSession);
+      return defaultSession;
+    }
+    
+    // Normalizar campos en caso de que falten en el documento antiguo
+    if (!docData.messages) docData.messages = [];
+    if (docData.promoSent === undefined) docData.promoSent = false;
+    if (docData.lastActive === undefined) docData.lastActive = now;
+    if (docData.lastSender === undefined) docData.lastSender = 'user';
+    if (docData.followUpSent === undefined) docData.followUpSent = false;
+    if (docData.closed === undefined) docData.closed = false;
+
+    return docData;
+  } catch (err) {
+    console.error(`❌ Error al obtener/crear sesión para ${sender}:`, err.message);
+    return defaultSession;
   }
-  const session = sessions.get(historyKey);
-  session.lastActive = now;
-  return session;
+}
+
+/**
+ * Guarda la sesión del usuario (Firestore con fallback local)
+ */
+async function saveSession(businessId, sender, session) {
+  try {
+    if (!isFirebaseConfigured()) {
+      const historyKey = `${businessId}:${sender}`;
+      sessions.set(historyKey, session);
+      return;
+    }
+    await saveDocument(`businesses/${businessId}/sessions`, sender, session);
+  } catch (err) {
+    console.error(`❌ Error al guardar sesión para ${sender}:`, err.message);
+  }
 }
 
 /**
@@ -100,7 +138,7 @@ async function handleIncomingMessage(messageData, businessId = 'balmoral') {
 
   try {
     // Obtener la sesión e historial aislado
-    const session = getOrCreateSession(historyKey);
+    const session = await getOrCreateSession(businessId, sender);
     const history = session.messages;
 
     // Obtener contexto relevante de la base de conocimiento de este negocio
@@ -154,8 +192,13 @@ async function handleIncomingMessage(messageData, businessId = 'balmoral') {
 
     // Guardar en historial ANTES de buscar fotos, para que la búsqueda contextual
     // pueda encontrar platos mencionados en la respuesta actual de la IA
-    addToHistory(historyKey, 'user', messageBody);
-    addToHistory(historyKey, 'assistant', aiResponse);
+    session.messages.push({ role: 'user', content: messageBody, timestamp: Date.now() });
+    session.messages.push({ role: 'assistant', content: aiResponse, timestamp: Date.now() });
+
+    // Mantener solo los últimos N mensajes (usuario + bot)
+    if (session.messages.length > MAX_HISTORY * 2) {
+      session.messages.splice(0, session.messages.length - MAX_HISTORY * 2);
+    }
 
     // Verificar si solicita algún recurso multimedia (foto general o de plato), pasando el historial actualizado
     const mediaRequest = getMediaForTopic(messageBody, businessId, session.messages);
@@ -167,6 +210,14 @@ async function handleIncomingMessage(messageData, businessId = 'balmoral') {
     if (mediaRequest) {
       await handleMediaResponse(businessConfig, sender, mediaRequest);
     }
+
+    // Actualizar metadatos de reenganche/cierre y persistir sesión en Firestore
+    session.lastActive = Date.now();
+    session.lastSender = 'assistant';
+    session.followUpSent = false;
+    session.closed = isConversationEnding(messageBody, aiResponse);
+
+    await saveSession(businessId, sender, session);
 
     log('✅ Respuesta enviada', { businessId, to: sender, response: aiResponse.substring(0, 100) });
 
@@ -199,41 +250,4 @@ async function handleMediaResponse(businessConfig, sender, media) {
   }
 }
 
-/**
- * Obtiene el historial de conversación de una clave
- */
-function getConversationHistory(historyKey) {
-  return getOrCreateSession(historyKey).messages;
-}
-
-/**
- * Agrega un mensaje al historial de conversación
- */
-function addToHistory(historyKey, role, content) {
-  const session = getOrCreateSession(historyKey);
-  session.messages.push({ role, content, timestamp: Date.now() });
-
-  // Mantener solo los últimos N mensajes (usuario + bot)
-  if (session.messages.length > MAX_HISTORY * 2) {
-    session.messages.splice(0, session.messages.length - MAX_HISTORY * 2);
-  }
-
-  // Limpiar conversaciones viejas (más de 2 horas sin actividad)
-  cleanOldConversations();
-}
-
-/**
- * Limpia conversaciones inactivas (más de 2 horas)
- */
-function cleanOldConversations() {
-  const TWO_HOURS = 2 * 60 * 60 * 1000;
-  const now = Date.now();
-
-  for (const [key, session] of sessions.entries()) {
-    if (now - session.lastActive > TWO_HOURS) {
-      sessions.delete(key);
-    }
-  }
-}
-
-module.exports = { handleIncomingMessage };
+module.exports = { handleIncomingMessage, getOrCreateSession, saveSession };

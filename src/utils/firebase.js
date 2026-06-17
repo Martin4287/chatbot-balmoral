@@ -218,6 +218,42 @@ function isFirebaseConfigured() {
   return db !== null;
 }
 
+async function getPendingFollowUpSessions(businessId) {
+  if (!db) return [];
+  try {
+    const snapshot = await db.collection('businesses').doc(businessId).collection('sessions')
+      .where('followUpSent', '==', false)
+      .where('lastSender', '==', 'assistant')
+      .get();
+      
+    const results = [];
+    snapshot.forEach(doc => {
+      // Filtrar closed !== true en memoria para evitar requerir índices compuestos complejos en Firestore
+      const data = doc.data();
+      if (data.closed !== true) {
+        results.push({ sender: doc.id, ...data });
+      }
+    });
+    return results;
+  } catch (error) {
+    console.error(`❌ Error al buscar sesiones pendientes de seguimiento para ${businessId}:`, error.message);
+    return [];
+  }
+}
+
+async function getRegisteredBusinessIds() {
+  if (!db) return ['balmoral'];
+  try {
+    const snapshot = await db.collection('businesses').get();
+    const ids = [];
+    snapshot.forEach(doc => ids.push(doc.id));
+    return ids;
+  } catch (error) {
+    console.error('❌ Error al obtener IDs de negocios:', error.message);
+    return ['balmoral'];
+  }
+}
+
 module.exports = {
   getDocument,
   saveDocument,
@@ -225,6 +261,8 @@ module.exports = {
   isFirebaseConfigured,
   validateBusinessCredentials,
   uploadImageToStorage,
-  registerNewBusiness
+  registerNewBusiness,
+  getPendingFollowUpSessions,
+  getRegisteredBusinessIds
 };
 
