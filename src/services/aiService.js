@@ -43,6 +43,43 @@ function createModel(modelName, businessId = 'balmoral') {
 }
 
 /**
+ * Normaliza el historial de chat para cumplir con los requisitos de la API de Gemini:
+ * 1. Mapea roles ('assistant' -> 'model', 'user' -> 'user').
+ * 2. Combina mensajes consecutivos del mismo rol.
+ * 3. Asegura que el historial comience siempre con un mensaje de 'user'.
+ */
+function normalizeChatHistory(history) {
+  if (!history || history.length === 0) return [];
+
+  const normalized = [];
+
+  for (const msg of history) {
+    const role = msg.role === 'assistant' ? 'model' : 'user';
+    const text = msg.content || '';
+
+    if (normalized.length > 0 && normalized[normalized.length - 1].role === role) {
+      // Combinar mensajes consecutivos del mismo rol
+      normalized[normalized.length - 1].parts[0].text += '\n' + text;
+    } else {
+      normalized.push({
+        role: role,
+        parts: [{ text: text }]
+      });
+    }
+  }
+
+  // Asegurar que el primer mensaje sea de 'user'
+  if (normalized.length > 0 && normalized[0].role === 'model') {
+    normalized.unshift({
+      role: 'user',
+      parts: [{ text: 'Hola' }]
+    });
+  }
+
+  return normalized;
+}
+
+/**
  * Genera una respuesta inteligente usando Gemini con rotación de modelos
  * @param {string} userMessage — Mensaje del cliente
  * @param {string} context — Contexto relevante de la base de conocimiento
@@ -61,11 +98,8 @@ async function generateAIResponse(userMessage, context, history = [], senderInfo
     try {
       console.log(`🤖 [${businessId}] Intentando responder con modelo: ${modelName}`);
 
-      // Construir el historial de conversación para Gemini
-      const chatHistory = history.map(msg => ({
-        role: msg.role === 'assistant' ? 'model' : 'user',
-        parts: [{ text: msg.content }]
-      }));
+      // Construir el historial de conversación normalizado para Gemini
+      const chatHistory = normalizeChatHistory(history);
 
       // Iniciar chat con historial dinámico
       const chat = createModel(modelName, businessId).startChat({
