@@ -329,9 +329,9 @@ async function generateAIResponse(userMessage, context, history = [], senderInfo
     }
   }
 
-  // FALLBACK: Si todos los modelos fallan, usar la respuesta de fallback local
-  console.error(`❌ Todos los modelos de Gemini fallaron para ${businessId}. Usando respuesta de fallback.`);
-  return generateFallbackResponse(userMessage, businessId);
+  // FALLBACK: Si todos los modelos fallan, lanzar error para programar un reintento silencioso en messageHandler
+  console.error(`❌ Todos los modelos de Gemini fallaron para ${businessId}.`);
+  throw new Error('Todos los modelos de Gemini fallaron (falla técnica de cuota o red).');
 }
 
 /**

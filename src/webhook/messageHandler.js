@@ -31,11 +31,16 @@ async function getOrCreateSession(businessId, sender) {
     if (!isFirebaseConfigured()) {
       const historyKey = `${businessId}:${sender}`;
       if (!sessions.has(historyKey)) {
-        sessions.set(historyKey, defaultSession);
+        sessions.set(historyKey, {
+          messages: [],
+          promoSent: false,
+          lastActive: now,
+          lastSender: 'user',
+          followUpSent: false,
+          closed: false
+        });
       }
-      const session = sessions.get(historyKey);
-      session.lastActive = now;
-      return session;
+      return sessions.get(historyKey);
     }
 
     const docData = await getDocument(`businesses/${businessId}/sessions`, sender);
@@ -225,13 +230,36 @@ async function handleIncomingMessage(messageData, businessId = 'balmoral') {
     console.error(`❌ Error procesando mensaje en negocio ${businessId}:`, error.message);
     log('❌ Error procesando mensaje', { businessId, error: error.message, sender });
 
-    // Enviar mensaje de fallback amable del negocio
-    await sendText(businessConfig, sender,
-      'Disculpe, tuve un inconveniente al procesar su consulta. 🙏\n\n' +
-      'Le sugiero contactarnos directamente:\n' +
-      `📞 ${businessConfig.salesPhone || 'nuestros teléfonos'}\n\n` +
-      'Nuestro equipo estará encantado de asistirle.'
-    );
+    // Lógica de reintento silencioso (3 minutos por defecto, 180.000 ms)
+    const retryCount = messageData._retryCount || 0;
+    const maxRetries = 2;
+    const retryDelay = 180000; // 3 minutos (modificar a 10000 para pruebas locales de 10s)
+
+    if (retryCount < maxRetries) {
+      messageData._retryCount = retryCount + 1;
+      const errorTime = Date.now();
+      console.log(`⏳ [${businessId}] Falla detectada para ${sender}. Programando reintento silencioso #${messageData._retryCount} en ${retryDelay / 1000} segundos...`);
+
+      setTimeout(async () => {
+        try {
+          // Obtener sesión actual
+          const session = await getOrCreateSession(businessId, sender);
+
+          // Si el último que envió fue el asistente, o hubo actividad exitosa posterior al error
+          if (session.lastSender === 'assistant' || session.lastActive > errorTime) {
+            console.log(`🚫 [${businessId}] Reintento #${messageData._retryCount} cancelado para ${sender}. La conversación ya se normalizó.`);
+            return;
+          }
+
+          console.log(`🔄 [${businessId}] Ejecutando reintento silencioso #${messageData._retryCount} para ${sender}...`);
+          await handleIncomingMessage(messageData, businessId);
+        } catch (retryErr) {
+          console.error(`❌ [${businessId}] Error durante la ejecución del reintento silencioso para ${sender}:`, retryErr.message);
+        }
+      }, retryDelay);
+    } else {
+      console.error(`❌ [${businessId}] Se alcanzó el límite máximo de reintentos silenciosos (${maxRetries}) para ${sender}. No se enviará ningún mensaje de error al cliente.`);
+    }
   }
 }
 
