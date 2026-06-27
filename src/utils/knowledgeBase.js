@@ -20,7 +20,7 @@ async function loadKnowledgeBase(businessId = 'balmoral') {
         knowledgeBases['balmoral'] = localKB;
         businessConfigs['balmoral'] = {
           businessId: 'balmoral',
-          name: 'Restaurante Balmoral',
+          name: 'Restaurante Balmoral, del Hotel Dos Reyes',
           ultramsgInstance: process.env.ULTRAMSG_INSTANCE_ID,
           ultramsgToken: process.env.ULTRAMSG_TOKEN,
           salesPhone: process.env.SALES_WHATSAPP || '5492233041076',
@@ -41,7 +41,7 @@ async function loadKnowledgeBase(businessId = 'balmoral') {
         // Fallback usando variables de entorno para balmoral
         businessConfigs['balmoral'] = {
           businessId: 'balmoral',
-          name: 'Restaurante Balmoral',
+          name: 'Restaurante Balmoral, del Hotel Dos Reyes',
           ultramsgInstance: process.env.ULTRAMSG_INSTANCE_ID,
           ultramsgToken: process.env.ULTRAMSG_TOKEN,
           salesPhone: process.env.SALES_WHATSAPP || '5492233041076',
@@ -412,7 +412,7 @@ function getBusinessConfig(businessId = 'balmoral') {
     // Intentar inicializar con datos por defecto
     businessConfigs[businessId] = {
       businessId,
-      name: businessId === 'balmoral' ? 'Restaurante Balmoral' : 'Negocio',
+      name: businessId === 'balmoral' ? 'Restaurante Balmoral, del Hotel Dos Reyes' : 'Negocio',
       ultramsgInstance: businessId === 'balmoral' ? process.env.ULTRAMSG_INSTANCE_ID : '',
       ultramsgToken: businessId === 'balmoral' ? process.env.ULTRAMSG_TOKEN : '',
       salesPhone: businessId === 'balmoral' ? (process.env.SALES_WHATSAPP || '5492233041076') : '',

@@ -132,6 +132,10 @@ function getApiClient(businessConfig) {
  */
 async function sendText(businessConfig, to, body) {
   try {
+    if (businessConfig && (businessConfig.businessId === 'balmoral' || String(businessConfig.name || '').toLowerCase().includes('balmoral'))) {
+      body = formatBalmoralName(body);
+    }
+
     if (isWaapiProvider(businessConfig)) {
       return await sendWaapiMessage(businessConfig, 'send-message', {
         chatId: to,
@@ -162,6 +166,10 @@ async function sendText(businessConfig, to, body) {
  */
 async function sendImage(businessConfig, to, imageUrl, caption = '') {
   try {
+    if (businessConfig && (businessConfig.businessId === 'balmoral' || String(businessConfig.name || '').toLowerCase().includes('balmoral'))) {
+      caption = formatBalmoralName(caption);
+    }
+
     if (isWaapiProvider(businessConfig)) {
       return await sendWaapiMessage(businessConfig, 'send-media', {
         chatId: to,
@@ -195,6 +203,10 @@ async function sendImage(businessConfig, to, imageUrl, caption = '') {
  */
 async function sendDocument(businessConfig, to, docUrl, filename = 'documento.pdf', caption = '') {
   try {
+    if (businessConfig && (businessConfig.businessId === 'balmoral' || String(businessConfig.name || '').toLowerCase().includes('balmoral'))) {
+      caption = formatBalmoralName(caption);
+    }
+
     if (isWaapiProvider(businessConfig)) {
       // Asegurar que el nombre del archivo tenga extensión .pdf para que WhatsApp lo muestre correctamente
       const pdfFilename = filename.endsWith('.pdf') ? filename : filename.replace(/\.[^.]+$/, '') + '.pdf' || 'Carta.pdf';
@@ -284,6 +296,58 @@ async function getContactInfo(businessConfig, contactId) {
     console.error(`❌ Error obteniendo info de contacto [${businessConfig.businessId}]:`, error.message);
     return null;
   }
+}
+
+/**
+ * Formatea dinámicamente el nombre comercial 'Balmoral' con las preposiciones adecuadas
+ * y el nombre comercial largo: 'Restaurante Balmoral, del Hotel Dos Reyes'.
+ * Protege enlaces y URLs para no romper hipervínculos en los mensajes.
+ */
+function formatBalmoralName(text) {
+  if (!text) return text;
+  
+  // 1. Proteger URLs y enlaces para evitar romper hipervínculos
+  const urls = [];
+  let formatted = text.replace(/(https?:\/\/[^\s]+|www\.[^\s]+)/gi, (match) => {
+    urls.push(match);
+    return `___URL_PLACEHOLDER_${urls.length - 1}___`;
+  });
+  
+  // 2. Reemplazos inteligentes según la preposición en español, mapeándolos al placeholder ___TEMP_FULL___
+  formatted = formatted.replace(/\ba Balmoral\b/gi, "al ___TEMP_FULL___");
+  formatted = formatted.replace(/\bA Balmoral\b/gi, "Al ___TEMP_FULL___");
+  
+  formatted = formatted.replace(/\bde Balmoral\b/gi, "del ___TEMP_FULL___");
+  formatted = formatted.replace(/\bDe Balmoral\b/gi, "Del ___TEMP_FULL___");
+  
+  formatted = formatted.replace(/\ben Balmoral\b/gi, "en el ___TEMP_FULL___");
+  formatted = formatted.replace(/\bEn Balmoral\b/gi, "En el ___TEMP_FULL___");
+  
+  formatted = formatted.replace(/\bel Balmoral\b/gi, "el ___TEMP_FULL___");
+  formatted = formatted.replace(/\bEl Balmoral\b/gi, "El ___TEMP_FULL___");
+  
+  formatted = formatted.replace(/\bcon Balmoral\b/gi, "con el ___TEMP_FULL___");
+  formatted = formatted.replace(/\bCon Balmoral\b/gi, "Con el ___TEMP_FULL___");
+
+  formatted = formatted.replace(/\bpara Balmoral\b/gi, "para el ___TEMP_FULL___");
+  formatted = formatted.replace(/\bPara Balmoral\b/gi, "Para el ___TEMP_FULL___");
+  
+  // 3. Proteger las variaciones existentes para evitar doble reemplazo (también mapeadas al placeholder)
+  formatted = formatted.replace(/Restaurante Balmoral, del Hotel Dos Reyes/gi, "___TEMP_FULL___");
+  formatted = formatted.replace(/Restaurante Balmoral/gi, "___TEMP_FULL___");
+  
+  // 4. Reemplazar ocurrencias independientes/sueltas restantes
+  formatted = formatted.replace(/\bBalmoral\b/g, "___TEMP_FULL___");
+  
+  // 5. Expandir todas las instancias del placeholder al nombre completo final
+  formatted = formatted.replace(/___TEMP_FULL___/g, "Restaurante Balmoral, del Hotel Dos Reyes");
+  
+  // 6. Restaurar URLs intactas
+  formatted = formatted.replace(/___URL_PLACEHOLDER_(\d+)___/g, (match, index) => {
+    return urls[parseInt(index)];
+  });
+  
+  return formatted;
 }
 
 module.exports = { sendText, sendImage, sendDocument, sendLocation, getContactInfo };
